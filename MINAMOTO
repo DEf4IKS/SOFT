@@ -1,34 +1,58 @@
-from hikka import loader, utils
-import aiohttp
-import re
-import logging
-import asyncio
-import base64
-import cloudscraper
 import os
+import re
+import asyncio
+import contextlib
+import sys
+import psutil
+import aiohttp
 import random
-from asyncio import sleep
+import logging
+import base64
+import json
+import urllib.parse
+import time
+import requests
+import tls_client
+import subprocess
+import cloudscraper
 from urllib.parse import unquote
-
+from asyncio import sleep
 from telethon import events, errors, functions, types
-from telethon.errors import InviteHashExpiredError, FloodWaitError
-from telethon.tl.functions.account import UpdateNotifySettingsRequest, UpdateProfileRequest, UpdateEmojiStatusRequest
-from telethon.tl.functions.channels import JoinChannelRequest, GetParticipantRequest, LeaveChannelRequest
-from telethon.tl.functions.messages import ImportChatInviteRequest, RequestAppWebViewRequest
-from telethon.tl.functions.users import GetFullUserRequest
+from telethon.errors import InviteHashExpiredError, FloodWaitError, ChatWriteForbiddenError, ChannelPrivateError, UserAlreadyParticipantError
+from telethon.tl import functions as tl_functions
+from telethon.tl.functions.account import (
+    UpdateNotifySettingsRequest,
+    UpdateProfileRequest,
+    UpdateEmojiStatusRequest,
+    SetPrivacyRequest,
+)
+from telethon.tl.functions.channels import (
+    JoinChannelRequest,
+    LeaveChannelRequest,
+    GetParticipantRequest,
+)
+from telethon.tl.functions.messages import (
+    ImportChatInviteRequest,
+    StartBotRequest,
+    RequestAppWebViewRequest,
+    GetMessagesViewsRequest,
+)
 from telethon.tl.types import (
-    Chat,
+    Message,
     Channel,
-    InputPeerNotifySettings,
-    InputNotifyPeer,
-    ChannelParticipantSelf,
-    MessageEntityTextUrl,
     PeerUser,
+    PeerChannel,
+    InputNotifyPeer,
+    InputPeerNotifySettings,
+    DialogFilter,
     KeyboardButtonUrl,
     InputBotAppShortName,
+    ChannelParticipantSelf,
+    Chat
 )
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
-from .. import loader, utils 
+from hikka import loader, utils
 logger = logging.getLogger(__name__)
 
 ERROR_PREFIX = "<emoji document_id=5210952531676504517>❌</emoji> <i>"
@@ -451,6 +475,59 @@ class MinamotoSoftV2(loader.Module):
         channels = [d for d in dialogs if d.is_channel]
         return len(channels)
 
+    @loader.command()
+    async def sub(self, message):
+        """Подписаться на каналы."""
+        await self.apply_delay()  # задержка перед выполнением команды
+
+        # Если команда вызвана в ответ на сообщение, берём текст из реплая, иначе — аргументы
+        reply = await message.get_reply_message()
+        args = utils.get_args_raw(message)
+
+        text_to_process = None
+        if reply:
+            text_to_process = reply.raw_text.strip() if reply.raw_text else None  # Используем raw_text
+            logger.info(f"[SUB] Текст из реплая: {text_to_process}")  # Логируем текст из реплая
+        else:
+            text_to_process = args.strip() if args else None
+
+        if not text_to_process:
+            await message.edit("<b>❌ Не указаны каналы для подписки.</b>")
+            return
+
+        # Ищем ссылки и упоминания отдельно
+        url_matches = re.findall(r'https?://t\.me/[^\s]+', text_to_process)
+        mention_matches = re.findall(r'@[\w_]+', text_to_process)
+        
+        urls = url_matches.copy()
+        for mention in mention_matches:
+            if mention not in urls:
+                urls.append(mention)
+
+        # Если ничего не найдено, воспринимаем весь текст как название канала
+        if not urls:
+            target = text_to_process.strip()
+            if not target.startswith("@") and not target.startswith("t.me/"):
+                target = f"@{target}"
+            urls = [target]
+
+        results = []
+        for url in urls:
+            # Преобразуем @username в ссылку, если необходимо
+            if url.startswith("@"):
+                url = f"https://t.me/{url[1:]}"
+            # Определяем тип ссылки: если это инвайт-ссылка, используем подписку для приватных чатов
+            if "/+" in url or "joinchat" in url:
+                res = await self.subscribe_private(url)
+            else:
+                res = await self.subscribe_public(url)
+            results.append(res)
+            await asyncio.sleep(self.config["delay"])
+        
+        final_text = "<b>Результаты подписки:</b>\n" + "\n".join(results)
+        await message.edit(final_text, parse_mode="html")
+        await self.send_logger_message(final_text)
+    
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
@@ -1493,6 +1570,18 @@ class MinamotoSoftV2(loader.Module):
             except Exception as e:
                 logger.error(f"Ошибка при подписке на {channel}: {e}")
 
+    @loader.command()
+    async def time(self, message):
+        """Скрыть время входа в аккаунт (изменить настройки конфиденциальности)."""
+        try:
+            await self.client(SetPrivacyRequest(
+                key=types.InputPrivacyKeyStatusTimestamp(),
+                rules=[types.InputPrivacyValueDisallowAll()]
+            ))
+            await message.edit("Настройки времени успешно изменены.")
+        except Exception as e:
+            await message.edit(f"Ошибка изменения настроек: {e}")
+    
     @loader.owner
     async def snickcmd(self, message):
         """/snick <chat_link_or_username>
