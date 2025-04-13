@@ -1496,12 +1496,10 @@ class MinamotoSoftV2(loader.Module):
         
     @loader.command()
     async def autogroup(self, message):
-        """
-        Команда: .autogroup <группа> <множитель> <chat_id>
+        """Команда: .autogroup <группа> <множитель> <chat_id>
 Пример: .autogroup 1 5.0 2328066448
 Команда: .autogroup <задержка> <chat_id>
-Пример: .autogroup 11.39 2328066448
-        """
+Пример: .autogroup 11.39 2328066448 """
         args = utils.get_args(message)
         if len(args) < 2:
             await utils.answer(
