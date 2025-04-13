@@ -529,9 +529,9 @@ class MinamotoSoftV2(loader.Module):
         elif "banned" in error_text.lower():
             return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
         else:
-            # Если ошибка не попадает ни под один из случаев, можно вывести ее исходное название.
             return f"КОД ОШИБКИ: {error_text}"
-
+    
+    
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
