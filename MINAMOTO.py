@@ -1,4 +1,4 @@
-__version__ = (1, 0, 2)
+__version__ = (1, 2, 2)
 import os
 import re
 import asyncio
@@ -1732,4 +1732,4 @@ class MinamotoSoftV2(loader.Module):
 
 def register(cb):
     cb(MinamotoSoftV2())   
-#тестим
+#тестим1v
