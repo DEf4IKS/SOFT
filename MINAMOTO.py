@@ -1703,7 +1703,7 @@ class MinamotoSoftV2(loader.Module):
         """
         Проверить обновление модуля.
         Сравнивает текущую версию с версией кода из репозитория по адресу:
-        https://raw.githubusercontent.com/tot882/hikka/refs/heads/master/hikka/langpacks/sorry.py
+        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
         Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
         remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
@@ -1711,22 +1711,22 @@ class MinamotoSoftV2(loader.Module):
             async with aiohttp.ClientSession() as session:
                 async with session.get(remote_url) as resp:
                     if resp.status != 200:
-                        await message.edit("<b>Ошибка получения данных для обновления.</b>")
+                        await message.reply("<b>Ошибка получения данных для обновления.</b>")
                         return
                     remote_code = await resp.text()
             m = re.search(r"__version__\s*=\s*\(([\d,\s]+)\)", remote_code)
             if not m:
-                await message.edit("<b>Невозможно определить версию удалённого модуля.</b>")
+                await message.reply("<b>Невозможно определить версию удалённого модуля.</b>")
                 return
             remote_version = tuple(map(int, m.group(1).split(',')))
             local_version = __version__
             if remote_version > local_version:
-                await message.edit("<b>Обнаружена новая версия. Обновляю модуль...</b>")
+                await message.reply("<b>Обнаружена новая версия. Обновляю модуль...</b>")
                 await self.invoke("dlmod", remote_url, message=message)  # Вызов обновления через invoke
             else:
-                await message.edit("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
+                await message.reply("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
         except Exception as e:
-            await message.edit(f"<b>Ошибка при обновлении: {e}</b>")
+            await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
 
 def register(cb):
     cb(MinamotoSoftV2())   
