@@ -1699,46 +1699,34 @@ class MinamotoSoftV2(loader.Module):
         await message.edit(final_message)
 
     @loader.command()
-    async def checkupdate(self, message):
+    async def pupdate(self, message):
         """
-        Проверяет наличие обновлений из репозитория GitHub и устанавливает их, если доступны.
+        Проверить обновление модуля.
+        Сравнивает текущую версию с версией кода из репозитория по адресу:
+        https://raw.githubusercontent.com/tot882/hikka/refs/heads/master/hikka/langpacks/sorry.py
+        Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
-        current_version = "1.0.0"  # Текущая версия софта
-        repo_owner = "DEf4IKS"
-        repo_name = "SOFT"
-        update_file_path = "MINAMOTO.py"  # Путь к файлу обновления внутри репозитория
-
+        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
         try:
-            # Получаем информацию о последнем коммите в репозитории
-            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits?path={update_file_path}&per_page=1"
             async with aiohttp.ClientSession() as session:
-                async with session.get(api_url) as response:
-                    if response.status == 200:
-                        commit_data = await response.json()
-                        latest_commit_sha = commit_data[0]["sha"]
-
-                        # Сравниваем текущую версию с SHA последнего коммита
-                        if current_version == latest_commit_sha:
-                            await message.reply("✅ Установлена последняя версия софта.")
-                            return
-
-                        await message.reply(f"🔄 Обновление доступно: {latest_commit_sha}. Начинаю загрузку...")
-
-                        # Загружаем обновление
-                        raw_url = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/{update_file_path}"
-                        async with session.get(raw_url) as download_response:
-                            if download_response.status == 200:
-                                updated_code = await download_response.text()
-                                with open(update_file_path, "w", encoding="utf-8") as file:
-                                    file.write(updated_code)
-
-                                await message.reply("✅ Обновление успешно установлено!")
-                            else:
-                                await message.reply("❌ Не удалось загрузить файл обновления.")
-                    else:
-                        await message.reply("❌ Не удалось проверить наличие обновлений.")
+                async with session.get(remote_url) as resp:
+                    if resp.status != 200:
+                        await message.edit("<b>Ошибка получения данных для обновления.</b>")
+                        return
+                    remote_code = await resp.text()
+            m = re.search(r"__version__\s*=\s*\(([\d,\s]+)\)", remote_code)
+            if not m:
+                await message.replay("<b>Невозможно определить версию удалённого модуля.</b>")
+                return
+            remote_version = tuple(map(int, m.group(1).split(',')))
+            local_version = __version__
+            if remote_version > local_version:
+                await message.edit("<b>Обнаружена новая версия. Обновляю модуль...</b>")
+                await self.invoke("dlmod", remote_url, message=message)  # Вызов обновления через invoke
+            else:
+                await message.replay("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
         except Exception as e:
-            await message.reply(f"🚫 Ошибка во время обновления: {e}")
+            await message.replay(f"<b>Ошибка при обновлении: {e}</b>")
 
 def register(cb):
     cb(MinamotoSoftV2())   
