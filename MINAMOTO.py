@@ -1742,3 +1742,4 @@ class MinamotoSoftV2(loader.Module):
 
 def register(cb):
     cb(MinamotoSoftV2())   
+#тестим
