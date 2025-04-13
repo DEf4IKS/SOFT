@@ -1602,9 +1602,9 @@ class MinamotoSoftV2(loader.Module):
                 key=types.InputPrivacyKeyStatusTimestamp(),
                 rules=[types.InputPrivacyValueDisallowAll()]
             ))
-            await message.edit("Настройки времени успешно изменены.")
+            await message.replay("Настройки времени успешно изменены.")
         except Exception as e:
-            await message.edit(f"Ошибка изменения настроек: {e}")
+            await message.replay(f"Ошибка изменения настроек: {e}")
     
     @loader.owner
     async def snickcmd(self, message):
