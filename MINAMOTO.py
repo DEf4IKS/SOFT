@@ -533,36 +533,36 @@ class MinamotoSoftV2(loader.Module):
         return f"КОД ОШИБКИ: {error_text}"
 
 
-@loader.command()
-async def subcmd(self, message):
-    """Подписаться на каналы."""
-    if not await self.ensure_subscription(message):
-        return
-    await self.apply_delay()
-    urls = await self.extract_valid_urls(utils.get_args_raw(message))
-    if not urls:
-        await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для подписки.{ERROR_SUFFIX}")
-        return
-
-    success, failed = 0, 0
-    for link in urls:
-        try:
-            if "/+" in link:
-                code = link.split("t.me/+")[1]
-                await self.client(ImportChatInviteRequest(code))
-            else:
-                uname = link.split("t.me/")[1]
-                await self.client(JoinChannelRequest(uname))
-            success += 1
-            await asyncio.sleep(self.config["delay"])
-        except Exception as e:
-            short_msg = short_error_message(e, link)
-            logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
-            await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
-            failed += 1
-
-    res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
-    await self.send_success_to_channel(res)
+    @loader.command()
+    async def subcmd(self, message):
+        """Подписаться на каналы."""
+        if not await self.ensure_subscription(message):
+            return
+        await self.apply_delay()
+        urls = await self.extract_valid_urls(utils.get_args_raw(message))
+        if not urls:
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для подписки.{ERROR_SUFFIX}")
+            return
+    
+        success, failed = 0, 0
+        for link in urls:
+            try:
+                if "/+" in link:
+                    code = link.split("t.me/+")[1]
+                    await self.client(ImportChatInviteRequest(code))
+                else:
+                    uname = link.split("t.me/")[1]
+                    await self.client(JoinChannelRequest(uname))
+                success += 1
+                await asyncio.sleep(self.config["delay"])
+            except Exception as e:
+                short_msg = short_error_message(e, link)
+                logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
+                failed += 1
+    
+        res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
+        await self.send_success_to_channel(res)
 
     @loader.command()
     async def unsubcmd(self, message):
