@@ -532,7 +532,6 @@ class MinamotoSoftV2(loader.Module):
         # Если ошибка не попадает ни под один из случаев, можно вывести ее исходное название.
         return f"КОД ОШИБКИ: {error_text}"
 
-
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
