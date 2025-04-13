@@ -1698,5 +1698,47 @@ class MinamotoSoftV2(loader.Module):
                 final_message += f" Но не удалось выйти из чата: {e}"
         await message.edit(final_message)
 
+    @loader.command()
+    async def checkupdate(self, message):
+        """
+        Проверяет наличие обновлений из репозитория GitHub и устанавливает их, если доступны.
+        """
+        current_version = "1.0.0"  # Текущая версия софта
+        repo_owner = "DEf4IKS"
+        repo_name = "SOFT"
+        update_file_path = "MINAMOTO.py"  # Путь к файлу обновления внутри репозитория
+
+        try:
+            # Получаем информацию о последнем коммите в репозитории
+            api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits?path={update_file_path}&per_page=1"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(api_url) as response:
+                    if response.status == 200:
+                        commit_data = await response.json()
+                        latest_commit_sha = commit_data[0]["sha"]
+
+                        # Сравниваем текущую версию с SHA последнего коммита
+                        if current_version == latest_commit_sha:
+                            await message.edit("✅ Установлена последняя версия софта.")
+                            return
+
+                        await message.edit(f"🔄 Обновление доступно: {latest_commit_sha}. Начинаю загрузку...")
+
+                        # Загружаем обновление
+                        raw_url = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/{update_file_path}"
+                        async with session.get(raw_url) as download_response:
+                            if download_response.status == 200:
+                                updated_code = await download_response.text()
+                                with open(update_file_path, "w", encoding="utf-8") as file:
+                                    file.write(updated_code)
+
+                                await message.edit("✅ Обновление успешно установлено!")
+                            else:
+                                await message.edit("❌ Не удалось загрузить файл обновления.")
+                    else:
+                        await message.edit("❌ Не удалось проверить наличие обновлений.")
+        except Exception as e:
+            await message.edit(f"🚫 Ошибка во время обновления: {e}")
+
 def register(cb):
     cb(MinamotoSoftV2())   
