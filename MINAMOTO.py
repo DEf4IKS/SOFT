@@ -462,26 +462,25 @@ class MinamotoSoftV2(loader.Module):
         channels = [d for d in dialogs if d.is_channel]
         return len(channels)
 
-    @loader.command()
     async def sub(self, message):
         """Подписаться на каналы."""
         await self.apply_delay()  # задержка перед выполнением команды
-    
+
         # Если команда вызвана в ответ на сообщение, берём текст из реплая, иначе — аргументы
         reply = await message.get_reply_message()
         args = utils.get_args_raw(message)
-    
+
         text_to_process = None
         if reply:
             text_to_process = reply.raw_text.strip() if reply.raw_text else None  # Используем raw_text
             logger.info(f"[SUB] Текст из реплая: {text_to_process}")  # Логируем текст из реплая
         else:
             text_to_process = args.strip() if args else None
-    
+
         if not text_to_process:
             await message.edit("<b>❌ Не указаны каналы для подписки.</b>")
             return
-    
+
         # Ищем ссылки и упоминания отдельно
         url_matches = re.findall(r'https?://t\.me/[^\s]+', text_to_process)
         mention_matches = re.findall(r'@[\w_]+', text_to_process)
@@ -490,14 +489,14 @@ class MinamotoSoftV2(loader.Module):
         for mention in mention_matches:
             if mention not in urls:
                 urls.append(mention)
-    
+
         # Если ничего не найдено, воспринимаем весь текст как название канала
         if not urls:
             target = text_to_process.strip()
             if not target.startswith("@") and not target.startswith("t.me/"):
                 target = f"@{target}"
             urls = [target]
-    
+
         results = []
         for url in urls:
             # Преобразуем @username в ссылку, если необходимо
@@ -527,7 +526,6 @@ class MinamotoSoftV2(loader.Module):
             return
         
         success, failed = 0, 0
-        results = []
         for link in urls:
             try:
                 if "/+" in link:
@@ -537,36 +535,12 @@ class MinamotoSoftV2(loader.Module):
                     uname = link.split("t.me/")[1]
                     await self.client(JoinChannelRequest(uname))
                 success += 1
-                results.append(f"Успешно подписался на {link}")
                 await asyncio.sleep(self.config["delay"])
-            except errors.FloodWaitError as e:
-                wait_time = e.seconds
-                error_message = f"Ошибка подписки на {link} Код ошибки: Флудвейт, необходимо подождать {wait_time} секунд."
-                logger.warning(error_message)
-                await self.send_error_to_channel(error_message)
-                results.append(error_message)
-                failed += 1
-            except errors.ChannelsTooMuchError:
-                error_message = f"Ошибка подписки на {link} Код ошибки: У вас лимиты на количество каналов."
-                logger.error(error_message)
-                await self.send_error_to_channel(error_message)
-                results.append(error_message)
-                failed += 1
-            except errors.UserAlreadyParticipantError:
-                error_message = f"Ошибка подписки на {link} Код ошибки: Уже подписаны."
-                logger.info(error_message)
-                await self.send_error_to_channel(error_message)
-                results.append(error_message)
-                failed += 1
             except Exception as e:
-                error_message = f"Ошибка подписки на {link} Код ошибки: {str(e)}"
-                logger.error(error_message)
-                await self.send_error_to_channel(error_message)
-                results.append(error_message)
+                logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"Ошибка подписки на {link}: {e}")
                 failed += 1
-    
-        res = f"<b>Подписка завершена:</b>\nУспешно: {success}\nНе удалось: {failed}\n" + "\n".join(results)
-        await message.edit(res, parse_mode="html")
+        res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
 
     @loader.command()
