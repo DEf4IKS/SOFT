@@ -1719,10 +1719,10 @@ class MinamotoSoftV2(loader.Module):
 
                         # Сравниваем текущую версию с SHA последнего коммита
                         if current_version == latest_commit_sha:
-                            await message.edit("✅ Установлена последняя версия софта.")
+                            await message.reply("✅ Установлена последняя версия софта.")
                             return
 
-                        await message.edit(f"🔄 Обновление доступно: {latest_commit_sha}. Начинаю загрузку...")
+                        await message.reply(f"🔄 Обновление доступно: {latest_commit_sha}. Начинаю загрузку...")
 
                         # Загружаем обновление
                         raw_url = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/main/{update_file_path}"
@@ -1732,13 +1732,13 @@ class MinamotoSoftV2(loader.Module):
                                 with open(update_file_path, "w", encoding="utf-8") as file:
                                     file.write(updated_code)
 
-                                await message.edit("✅ Обновление успешно установлено!")
+                                await message.reply("✅ Обновление успешно установлено!")
                             else:
-                                await message.edit("❌ Не удалось загрузить файл обновления.")
+                                await message.reply("❌ Не удалось загрузить файл обновления.")
                     else:
-                        await message.edit("❌ Не удалось проверить наличие обновлений.")
+                        await message.reply("❌ Не удалось проверить наличие обновлений.")
         except Exception as e:
-            await message.edit(f"🚫 Ошибка во время обновления: {e}")
+            await message.reply(f"🚫 Ошибка во время обновления: {e}")
 
 def register(cb):
     cb(MinamotoSoftV2())   
