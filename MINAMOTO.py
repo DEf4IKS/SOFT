@@ -1716,7 +1716,7 @@ class MinamotoSoftV2(loader.Module):
                     remote_code = await resp.text()
             m = re.search(r"__version__\s*=\s*\(([\d,\s]+)\)", remote_code)
             if not m:
-                await message.replay("<b>Невозможно определить версию удалённого модуля.</b>")
+                await message.edit("<b>Невозможно определить версию удалённого модуля.</b>")
                 return
             remote_version = tuple(map(int, m.group(1).split(',')))
             local_version = __version__
@@ -1724,9 +1724,9 @@ class MinamotoSoftV2(loader.Module):
                 await message.edit("<b>Обнаружена новая версия. Обновляю модуль...</b>")
                 await self.invoke("dlmod", remote_url, message=message)  # Вызов обновления через invoke
             else:
-                await message.replay("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
+                await message.edit("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
         except Exception as e:
-            await message.replay(f"<b>Ошибка при обновлении: {e}</b>")
+            await message.edit(f"<b>Ошибка при обновлении: {e}</b>")
 
 def register(cb):
     cb(MinamotoSoftV2())   
