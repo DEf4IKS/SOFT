@@ -235,21 +235,17 @@ class MinamotoSoftV2(loader.Module):
                 logger.warning(f"Флудвейт {wait_time} сек. Ожидаю...")
                 await asyncio.sleep(wait_time)
                 attempts += 1
+                if attempts >= max_attempts:
+                    return f"Ошибка подписки на {link} Код ошибки: Флудвейт, необходимо подождать {wait_time} секунд."
+            except errors.UserAlreadyParticipantError:
+                return f"Ошибка подписки на {link} Код ошибки: Уже подписаны."
+            except errors.ChannelsTooMuchError:
+                return f"Ошибка подписки на {link} Код ошибки: У вас лимиты на количество каналов."
             except Exception as e:
                 logger.error(f"Ошибка вступления: {str(e)}")
-                return False
+                return f"Ошибка подписки на {link} Код ошибки: {str(e)}"
         return False
-
-    async def is_subscribed(self, target: str) -> bool:
-        """Улучшенная проверка подписки с кешированием"""
-        try:
-            entity = await self.client.get_entity(target)
-            participant = await self.client(GetParticipantRequest(entity, "me"))
-            return isinstance(participant.participant, ChannelParticipantSelf)
-        except Exception as e:
-            logger.error(f"Ошибка проверки подписки: {e}")
-            return False
-
+    
     async def process_subscription(self, link: str):
         """Обработка одной подписки с проверкой типа ссылки"""
         try:
@@ -258,18 +254,19 @@ class MinamotoSoftV2(loader.Module):
             
             entity = await self.client.get_entity(link)
             if not isinstance(entity, Channel):
-                return "ignored"  # Если ссылка ведёт на пользователя, подписка не требуется
+                return f"{link} - это пользователь, подписка не требуется"
             
             if await self.is_subscribed(link):
-                return "already_subscribed"
+                return f"Ошибка подписки на {link} Код ошибки: Уже подписаны."
             
-            if await self.join_with_retry(link):
-                return "success"
-            
-            return "failed"
+            result = await self.join_with_retry(link)
+            if result is True:
+                return f"Успешно подписался на {link}"
+            else:
+                return result  # Возвращаем сообщение об ошибке из join_with_retry
         except Exception as e:
             logger.error(f"Ошибка обработки: {str(e)}")
-            return "error"
+            return f"Ошибка подписки на {link} Код ошибки: {str(e)}"
 
     async def extract_and_process_links(self, message, urls):
         """Обработка ссылок из поста с проверкой типа (канал или пользователь)"""
