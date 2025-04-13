@@ -376,18 +376,6 @@ class MinamotoSoftV2(loader.Module):
         def log(self, message: str):
             logger.info(message)
 
-    async def is_subscribed(self, target_channel=None):
-        """Проверка подписки на указанный канал"""
-        try:
-            channel = target_channel or self.CHANNEL_USERNAME
-            participant = await self.client(GetParticipantRequest(channel, "me"))
-            return isinstance(participant.participant, ChannelParticipantSelf)
-        except ValueError:
-            return False
-        except Exception as e:
-            logger.error(f"Ошибка проверки подписки: {e}")
-            return False
-
     async def ensure_subscription(self, message):
         if not await self.is_subscribed():
             await message.edit(self.strings["sub_required"])
