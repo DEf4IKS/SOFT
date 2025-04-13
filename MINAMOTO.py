@@ -1703,6 +1703,41 @@ class MinamotoSoftV2(loader.Module):
         except Exception as e:
             await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
 
+    @loader.command()
+    async def softgif(self, message):
+        """Отправить анимированную инструкцию"""
+        gif_url = "https://steamuserimages-a.akamaihd.net/ugc/2300839139770044643/73BB860AC1C95BAD55985796FB13B5A3A1F34507/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false"
+        
+        try:
+            await message.delete()
+            await message.reply(
+                "<b>🔄 Анимированная инструкция:</b>",
+                file=gif_url,
+                link_preview=False
+            )
+        except Exception as e:
+            await message.reply(f"<b>Ошибка отправки GIF: {e}</b>")
+    
+    @loader.command()
+    async def manual(self, message):
+        """Показать документацию и руководство"""
+        docs_url = "https://def4iks.github.io/SOFT/"
+        
+        response_text = (
+            "<b>📚 Полная документация:</b>\n\n"
+            f"<a href='{docs_url}'>Официальное руководство</a>\n\n"
+            "• Все команды и настройки\n"
+            "• Примеры использования\n"
+            "• Частые вопросы\n"
+            "• Контакты поддержки"
+        )
+        
+        try:
+            await message.delete()
+            await message.reply(response_text, link_preview=False)
+        except Exception as e:
+            await message.reply(f"<b>Ошибка отправки документации: {e}</b>")
+
 def register(cb):
     cb(MinamotoSoftV2())   
 #тестим1v
