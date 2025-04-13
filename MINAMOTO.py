@@ -515,22 +515,22 @@ class MinamotoSoftV2(loader.Module):
         await self.send_logger_message(final_text)
     
     def short_error_message(e: Exception, link: str) -> str:
-    """
-    Функция маппинга исходного текста ошибки на короткое сообщение.
-    """
-    error_text = str(e)
-    # Если ошибка связана с флудвейтом или превышением лимита каналов.
-    if "FloodWait" in error_text or "joined too many channels" in error_text:
-        return "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
-    # Если сообщение об ошибке содержит информацию, что чат/канал не найден.
-    elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
-        return "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
-    # Если сообщение об ошибке указывает на бан в канале.
-    elif "banned" in error_text.lower():
-        return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
-    else:
-        # Если ошибка не попадает ни под один из случаев, можно вывести ее исходное название.
-        return f"КОД ОШИБКИ: {error_text}"
+        """
+        Функция маппинга исходного текста ошибки на короткое сообщение.
+        """
+        error_text = str(e)
+        # Если ошибка связана с флудвейтом или превышением лимита каналов.
+        if "FloodWait" in error_text or "joined too many channels" in error_text:
+            return "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
+        # Если сообщение об ошибке содержит информацию, что чат/канал не найден.
+        elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
+            return "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
+        # Если сообщение об ошибке указывает на бан в канале.
+        elif "banned" in error_text.lower():
+            return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
+        else:
+            # Если ошибка не попадает ни под один из случаев, можно вывести ее исходное название.
+            return f"КОД ОШИБКИ: {error_text}"
 
     @loader.command()
     async def subcmd(self, message):
