@@ -1704,39 +1704,39 @@ class MinamotoSoftV2(loader.Module):
             await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
 
     @loader.command()
-    async def softgif(self, message):
-        """Отправить анимированную инструкцию"""
-        gif_url = "https://steamuserimages-a.akamaihd.net/ugc/2300839139770044643/73BB860AC1C95BAD55985796FB13B5A3A1F34507/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false"
-        
-        try:
-            await message.delete()
-            await message.reply(
-                "<b>🔄 Анимированная инструкция:</b>",
-                file=gif_url,
-                link_preview=False
-            )
-        except Exception as e:
-            await message.reply(f"<b>Ошибка отправки GIF: {e}</b>")
-    
-    @loader.command()
     async def manual(self, message):
-        """Показать документацию и руководство"""
+        """Показать документацию с анимированной инструкцией"""
+        gif_url = "https://steamuserimages-a.akamaihd.net/ugc/2300839139770044643/73BB860AC1C95BAD55985796FB13B5A3A1F34507/?imw=512&&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=false"
         docs_url = "https://def4iks.github.io/SOFT/"
         
-        response_text = (
-            "<b>📚 Полная документация:</b>\n\n"
-            f"<a href='{docs_url}'>Официальное руководство</a>\n\n"
-            "• Все команды и настройки\n"
-            "• Примеры использования\n"
-            "• Частые вопросы\n"
-            "• Контакты поддержки"
+        caption = (
+            "<b>📚 Полное руководство:</b>\n\n"
+            f"<a href='{docs_url}'>Официальная документация</a>\n"
+            "├ Все команды и настройки\n"
+            "├ Примеры использования\n"
+            "├ Частые вопросы\n"
+            "└ Контакты поддержки\n\n"
+            "<i>🔄 Анимированная инструкция ниже</i>"
         )
         
         try:
             await message.delete()
-            await message.reply(response_text, link_preview=False)
+            
+            # Отправляем гифку с описанием
+            await message.client.send_file(
+                entity=message.chat_id,
+                file=gif_url,
+                caption=caption,
+                link_preview=False
+            )
+            
         except Exception as e:
-            await message.reply(f"<b>Ошибка отправки документации: {e}</b>")
+            error_msg = (
+                "<b>❌ Ошибка отправки руководства:</b>\n"
+                f"<code>{str(e)}</code>\n\n"
+                f"Ссылка на документацию: {docs_url}"
+            )
+            await message.reply(error_msg)
 
 def register(cb):
     cb(MinamotoSoftV2())   
