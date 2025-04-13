@@ -1,3 +1,4 @@
+__version__ = (1, 0, 0)
 import os
 import re
 import asyncio
@@ -76,7 +77,6 @@ async def get_creation_date(tg_id: int) -> str:
             else:
                 return "Ошибка получения данных"
 
-__version__ = (1, 0, 0)
 
 class MinamotoSoftV2(loader.Module):
     """Обновленный модуль для верификации, подписок, рефералов, логирования личных сообщений и участия в розыгрышах"""
