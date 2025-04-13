@@ -1,4 +1,4 @@
-__version__ = (1, 2, 5)
+__version__ = (1, 0,1 )
 import os
 import re
 import asyncio
@@ -1497,17 +1497,10 @@ class MinamotoSoftV2(loader.Module):
     @loader.command()
     async def autogroup(self, message):
         """
-        Устанавливает задержку для текущего аккаунта.
-        
-        Поддерживаются два варианта вызова:
-        
-        1) .autogroup <группа> <множитель> <chat_id>
-           Пример: .autogroup 1 5.0 2328066448
-           Здесь базовая задержка определяется по группе (1 = 5 сек) и прибавляется (индекс аккаунта * множитель).
-           
-        2) .autogroup <задержка> <chat_id>
-           Пример: .autogroup 11.39 2328066448
-           Здесь задержка задаётся напрямую.
+        Команда: .autogroup <группа> <множитель> <chat_id>
+Пример: .autogroup 1 5.0 2328066448
+Команда: .autogroup <задержка> <chat_id>
+Пример: .autogroup 11.39 2328066448
         """
         args = utils.get_args(message)
         if len(args) < 2:
