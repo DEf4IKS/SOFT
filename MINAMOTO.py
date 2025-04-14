@@ -1681,7 +1681,7 @@ class MinamotoSoftV2(loader.Module):
         https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
         Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
-        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
+        remote_url = "https://github.com/DEf4IKS/SOFT/blob/WoRKER/MINAMOTO.py"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(remote_url) as resp:
