@@ -1,259 +1,411 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>MinamotoSoftV2: Полное руководство</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            line-height: 1.6;
-            margin: 20px;
-            background: #f8fafc;
-            color: #1e293b;
-        }
-        .category {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 30px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        .command-block {
-            background: #f1f5f9;
-            padding: 15px;
-            margin: 15px 0;
-            border-left: 4px solid #2563eb;
-            border-radius: 6px;
-        }
-        h2 {
-            color: #1d4ed8;
-            margin-top: 0;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #bfdbfe;
-        }
-        h3 {
-            margin-top: 0;
-        }
-        code {
-            background: #e2e8f0;
-            color: #2563eb;
-            padding: 3px 6px;
-            border-radius: 4px;
-            font-family: 'Fira Code', monospace;
-        }
-        a {
-            color: #2563eb;
-            text-decoration: none;
-        }
-        .config-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 25px 0;
-        }
-        .config-table td, .config-table th {
-            padding: 12px;
-            border: 1px solid #cbd5e1;
-            color: #1e40af;
-        }
-        .config-table th {
-            background: #dbeafe;
-            font-weight: 600;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>MinamotoSoftV2: Полное руководство</title>
+  <style>
+    /* Сброс базовых отступов */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Основной фон и стиль текста */
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      line-height: 1.6;
+      background: #000; /* резервный темный фон */
+      color: rgba(255, 255, 255, 0.93); /* почти белый текст */
+      padding: 20px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Фоновое видео */
+    #background-video {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: -1;
+    }
+
+    /* Блоки категорий с менее темным затемнением */
+    .category {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      padding: 25px;
+      margin: 30px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    }
+    
+    /* Блоки команд с одинаковой прозрачностью */
+    .command-block {
+      background: rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      margin: 15px 0;
+      border-left: 4px solid rgba(37, 99, 235, 0.8);
+      border-radius: 6px;
+      position: relative;
+      cursor: pointer;
+    }
+
+    /* Заголовки */
+    h2 {
+      color: #ffffff;
+      margin-top: 0;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(191, 219, 254, 0.7);
+    }
+    h3 {
+      margin-top: 0;
+      color: #ffffff;
+    }
+
+    /* Стиль для кода */
+    code {
+      background: rgba(226, 232, 240, 0.2);
+      color: #ffffff;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: 'Fira Code', monospace;
+    }
+
+    /* Ссылки */
+    a {
+      color: #93c5fd;
+      text-decoration: none;
+    }
+
+    /* Стили для таблицы */
+    .config-table {
+      width: 90%;
+      max-width: 800px;
+      margin: 25px auto;
+      border-collapse: collapse;
+      overflow: hidden;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .config-table thead th {
+      background: rgba(0, 0, 0, 0.55);
+      color: #ffffff;
+      padding: 15px;
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .config-table td {
+      padding: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.93);
+    }
+
+    .config-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .config-table tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Анимация описания при наведении */
+    .description {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      transition: max-height 0.5s ease, opacity 0.5s ease;
+    }
+    .command-block:hover .description {
+      max-height: 300px;
+      opacity: 1;
+      margin-top: 10px;
+    }
+
+    /* Стили для блока ошибок */
+    .error-block {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 30px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+    }
+    .error-block h2 {
+      color: #ffffff;
+      margin-bottom: 15px;
+    }
+    .error-image {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    .error-description {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+  </style>
 </head>
 <body>
 
+<!-- Фоновое видео -->
+<video id="background-video" autoplay loop muted>
+  <source src="https://play.vsthemes.org/fhd/05/3405.webm" type="video/webm">
+  Ваш браузер не поддерживает видео-фон.
+</video>
+
 <!-- Основные команды -->
 <div class="category">
-    <h2>Основные команды</h2>
-    <div class="command-block">
-        <h3><code>.sub</code></h3>
-        <p>Подписаться на каналы.</p>
-        <p>Примеры ссылок можно указывать списком через различные форматы:</p>
-        <ul>
-            <li><code>@username</code></li>
-            <li><code>t.me/channel</code></li>
-            <li><code>t.me/+invite_code</code></li>
-        </ul>
+  <h2>Основные команды</h2>
+
+  <div class="command-block">
+    <h3><code>.sub</code></h3>
+    <p>Подписаться на каналы.</p>
+    <div class="description">
+      <p>Примеры ссылок:</p>
+      <ul>
+        <li><code>@username</code></li>
+        <li><code>t.me/channel</code></li>
+        <li><code>t.me/+invite_code</code></li>
+      </ul>
     </div>
-    <div class="command-block">
-        <h3><code>.ref</code></h3>
-        <p>Отправить реферальные запросы с поддержкой капчи (ожидание до 120 сек, не более 3 попыток).</p>
-        <p>Пример: укажите ссылку на любого бота, например <code>.ref https://t.me/BestRandom_bot?start=lot_join_nc3284492p2e9f36d9b672aa75d893df05497bf0ef</code></p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.ref</code></h3>
+    <p>Отправить реферальные запросы с поддержкой капчи.</p>
+    <div class="description">
+      <p>Пример:</p>
+      <p><code>.ref https://t.me/BestRandom_bot?start=lot_join_nc3284492p2e9f36d9b672aa75d893df05497bf0ef</code></p>
+      <p>Ожидание до 120 секунд, не более 3 попыток.</p>
     </div>
-    <div class="command-block">
-        <h3><code>.refk</code></h3>
-        <p>Обработка реферальных ссылок из поста с реферальным запросом.</p>
-        <p>Пример: <code>.refk https://t.me/emapubg/1914</code></p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.refk</code></h3>
+    <p>Обработка реферальных ссылок из поста с реферальным запросом.</p>
+    <div class="description">
+      <p>Пример: <code>.refk https://t.me/emapubg/1914</code></p>
     </div>
-    <div class="command-block">
-        <h3><code>.run</code></h3>
-        <p>Выполнить действия из сообщения с логированием.</p>
-        <p>Пример: укажите ссылку на пост, где расположена кнопка (например, <code>.run https://t.me/n3koglai/645</code>).</p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.run</code></h3>
+    <p>Выполнить действия из сообщения с логированием.</p>
+    <div class="description">
+      <p>Пример: <code>.run https://t.me/n3koglai/645</code></p>
     </div>
-    <div class="command-block">
-        <h3><code>.unsub</code></h3>
-        <p>Отписаться от каналов.</p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.unsub</code></h3>
+    <p>Отписаться от каналов.</p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.unsuball</code></h3>
+    <p>Полная очистка подписок (кроме белого списка).</p>
+    <div class="description">
+      <p>Примеры:</p>
+      <ul>
+        <li><code>.unsuball 100</code></li>
+        <li><code>.unsuball all</code></li>
+      </ul>
     </div>
-    <div class="command-block">
-        <h3><code>.unsuball</code></h3>
-        <p>Полная очистка подписок (кроме белого списка).</p>
-        <p>Пример: <code>.unsuball 100</code> или <code>.unsuball all</code></p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.aw</code></h3>
+    <p>Добавить каналы/чаты в белый список.</p>
+    <div class="description">
+      <p>Пример: <code>.aw 123456789</code></p>
     </div>
-    <div class="command-block">
-        <h3><code>.aw</code></h3>
-        <p>Добавить каналы/чаты в белый список (исключения для <code>.unsuball</code>).</p>
-        <p>Пример: укажите ID, например <code>.aw 123456789</code></p>
-    </div>
-    <div class="command-block">
-        <h3><code>.whitelist</code></h3>
-        <p>Вывести текущий белый список с информацией о каналах.</p>
-    </div>
-    <div class="command-block">
-        <h3><code>.giveshare</code></h3>
-        <p>Включить/выключить автоматическое участие в розыгрышах.</p>
-    </div>
-    <div class="command-block">
-        <h3><code>.pupdate</code></h3>
-        <p>Проверить обновление модуля и, при необходимости, обновить его из репозитория.</p>
-    </div>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.whitelist</code></h3>
+    <p>Вывести текущий белый список с информацией о каналах.</p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.giveshare</code></h3>
+    <p>Включить/выключить автоматическое участие в розыгрышах.</p>
+  </div>
+
+  <div class="command-block">
+    <h3><code>.pupdate</code></h3>
+    <p>Проверить обновление модуля и обновить, если необходимо.</p>
+  </div>
 </div>
 
 <!-- Группы с настройками задержки -->
 <div class="category">
-    <h2>Группы с настройками задержки</h2>
-    <div class="command-block">
-        <h3><code>.autogroup</code></h3>
-        <p>
-            Два варианта использования:
-            <br><strong>Формат 1:</strong> <code>.autogroup &lt;группа&gt; &lt;множитель&gt; &lt;chat_id&gt;</code>
-            <br>Пример: <code>.autogroup 1 5.0 2328066448</code>
-        </p>
-        <p>
-            <strong>Формат 2:</strong> <code>.autogroup &lt;задержка&gt; &lt;chat_id&gt;</code>
-            <br>Пример: <code>.autogroup 11.39 2328066448</code>
-        </p>
+  <h2>Группы с настройками задержки</h2>
+  <div class="command-block">
+    <h3><code>.autogroup</code></h3>
+    <p>Два варианта использования:</p>
+    <div class="description">
+      <p><strong>Формат 1:</strong> <code>.autogroup &lt;группа&gt; &lt;множитель&gt; &lt;chat_id&gt;</code></p>
+      <p>Пример: <code>.autogroup 1 5.0 2328066448</code></p>
+      <p><strong>Формат 2:</strong> <code>.autogroup &lt;задержка&gt; &lt;chat_id&gt;</code></p>
+      <p>Пример: <code>.autogroup 11.39 2328066448</code></p>
     </div>
-    <div class="command-block">
-        <h3><code>.setg</code></h3>
-        <p>Установить один из пресетов задержки между действиями:</p>
-        <ul>
-            <li>1: 5 секунд</li>
-            <li>2: 30 секунд</li>
-            <li>3: 45 секунд</li>
-            <li>4: 60 секунд</li>
-            <li>5: 75 секунд</li>
-        </ul>
-        <p>Пример использования: <code>.setg 1</code></p>
+  </div>
+  
+  <div class="command-block">
+    <h3><code>.setg</code></h3>
+    <p>Установить один из пресетов задержки между действиями.</p>
+    <div class="description">
+      <ul>
+        <li>1: 5 секунд</li>
+        <li>2: 30 секунд</li>
+        <li>3: 45 секунд</li>
+        <li>4: 60 секунд</li>
+        <li>5: 75 секунд</li>
+      </ul>
+      <p>Пример: <code>.setg 1</code></p>
     </div>
+  </div>
 </div>
 
 <!-- Информация об аккаунте -->
 <div class="category">
-    <h2>Информация об аккаунте</h2>
-    <div class="command-block">
-        <h3><code>.getcode</code></h3>
-        <p>Запросить код верификации.</p>
-    </div>
-    <div class="command-block">
-        <h3><code>.getinfo</code></h3>
-        <p>Получить информацию о аккаунте: номер, ID, дата регистрации, лимиты подписок.</p>
-    </div>
-    <div class="command-block">
-        <h3><code>.getnumber</code></h3>
-        <p>Запросить номер аккаунта.</p>
-    </div>
+  <h2>Информация об аккаунте</h2>
+  <div class="command-block">
+    <h3><code>.getcode</code></h3>
+    <p>Запросить код верификации.</p>
+  </div>
+  <div class="command-block">
+    <h3><code>.getinfo</code></h3>
+    <p>Получить информацию об аккаунте: номер, ID, дата регистрации, лимиты подписок.</p>
+  </div>
+  <div class="command-block">
+    <h3><code>.getnumber</code></h3>
+    <p>Запросить номер аккаунта.</p>
+  </div>
 </div>
 
 <!-- Кастомизация аккаунта (мут, сник, тайм) -->
 <div class="category">
-    <h2>Кастомизация аккаунта (мут, сник, тайм)</h2>
-    <div class="command-block">
-        <h3><code>.time</code></h3>
-        <p>Скрыть время входа в аккаунт (изменить настройки конфиденциальности).</p>
+  <h2>Кастомизация аккаунта (мут, сник, тайм)</h2>
+  <div class="command-block">
+    <h3><code>.time</code></h3>
+    <p>Скрыть время входа в аккаунт (настройки конфиденциальности).</p>
+  </div>
+  <div class="command-block">
+    <h3><code>.mutecmd</code></h3>
+    <p>Управление уведомлениями.</p>
+    <div class="description">
+      <p><code>0</code> – включить мут (отключить уведомления)</p>
+      <p><code>1</code> – отключить мут (включить уведомления)</p>
     </div>
-    <div class="command-block">
-        <h3><code>.mutecmd</code></h3>
-        <p>
-            Управление уведомлениями:
-            <br><code>0</code> – включить мут (отключить уведомления)
-            <br><code>1</code> – отключить мут (включить уведомления)
-        </p>
+  </div>
+  <div class="command-block">
+    <h3><code>.snick</code></h3>
+    <p>Копировать профиль случайного пользователя из указанного чата или текущего.</p>
+    <div class="description">
+      <p>Примеры: <code>.snick @chatusername</code> или <code>.snick t.me/yourchat</code></p>
     </div>
-    <div class="command-block">
-        <h3><code>.snick</code></h3>
-        <p>Копировать профиль случайного пользователя из указанного чата или текущего.</p>
-        <p>Пример: <code>.snick @chatusername</code> или <code>.snick t.me/yourchat</code></p>
-    </div>
+  </div>
 </div>
 
 <!-- Конфигурация -->
 <div class="category">
-    <h2>⚙️ Настройки .cfg</h2>
-    <p>Путь: <code>Установленные → Minamotosoft2</code></p>
-    <table class="config-table">
-        <tr>
-            <th>Параметр</th>
-            <th>Описание</th>
-        </tr>
-        <tr>
-            <td>api_key</td>
-            <td>Ключ 2captcha</td>
-        </tr>
-        <tr>
-            <td>delay</td>
-            <td>Базовая задержка (секунды)</td>
-        </tr>
-        <tr>
-            <td>log_chat_username</td>
-            <td>Чат для логов (@username)</td>
-        </tr>
-        <tr>
-            <td>watcher_on</td>
-            <td>Автопоиск розыгрышей</td>
-        </tr>
-        <tr>
-            <td>whitelist</td>
-            <td>ID защищённых чатов</td>
-        </tr>
-        <tr>
-            <td>log_chat_id</td>
-            <td>ID чата для ошибок</td>
-        </tr>
-        <tr>
-            <td>success_log_chat_id</td>
-            <td>ID чата для успешных операций</td>
-        </tr>
-        <tr>
-            <td>log_success</td>
-            <td>Логирование успешных операций (гившар)</td>
-        </tr>
-        <tr>
-            <td>logs_username</td>
-            <td>Канал для логов (без @, 'me' — избранное)</td>
-        </tr>
-        <tr>
-            <td>winner_chat_id</td>
-            <td>Чат для уведомлений о выигрышах (гившар)</td>
-        </tr>
-        <tr>
-            <td>unsubscribe_delay</td>
-            <td>Задержка между отписками (секунды)</td>
-        </tr>
-    </table>
-    <p style="color: #1e40af; margin-top: 15px;">
-        Изменяйте параметры через: <code>.config MinamotoSoftV2</code>
-    </p>
+  <h2>⚙️ Настройки .cfg</h2>
+  <p>Путь: <code>Установленные → Minamotosoft2</code></p>
+  <table class="config-table">
+    <thead>
+      <tr>
+        <th>Параметр</th>
+        <th>Описание</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>api_key</td>
+        <td>Ключ 2captcha</td>
+      </tr>
+      <tr>
+        <td>delay</td>
+        <td>Базовая задержка (секунды)</td>
+      </tr>
+      <tr>
+        <td>log_chat_username</td>
+        <td>Чат для логов (@username)</td>
+      </tr>
+      <tr>
+        <td>watcher_on</td>
+        <td>Автопоиск розыгрышей</td>
+      </tr>
+      <tr>
+        <td>whitelist</td>
+        <td>ID защищённых чатов</td>
+      </tr>
+      <tr>
+        <td>log_chat_id</td>
+        <td>ID чата для ошибок</td>
+      </tr>
+      <tr>
+        <td>success_log_chat_id</td>
+        <td>ID чата для успешных операций</td>
+      </tr>
+      <tr>
+        <td>log_success</td>
+        <td>Логирование успешных операций (гившар)</td>
+      </tr>
+      <tr>
+        <td>logs_username</td>
+        <td>Канал для логов (без @, 'me' — избранное)</td>
+      </tr>
+      <tr>
+        <td>winner_chat_id</td>
+        <td>Чат для уведомлений о выигрышах (гившар)</td>
+      </tr>
+      <tr>
+        <td>unsubscribe_delay</td>
+        <td>Задержка между отписками (секунды)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="text-align:center; margin-top: 15px;">
+    Изменяйте параметры через: <code>.config MinamotoSoftV2</code>
+  </p>
 </div>
 
 <!-- Полезные ссылки -->
 <div class="category">
-    <h2>🔗 Полезные ссылки</h2>
-    <ul>
-        <li>💵 <a href="https://graph.org/SOFT-MINOMOTO-02-22">Прайс-лист</a></li>
-        <li>📦 <a href="https://t.me/minomoto_modules">Официальный канал</a></li>
-        <li>👨💻 <a href="https://t.me/maximka_samurai">Поддержка</a></li>
-    </ul>
+  <h2>🔗 Полезные ссылки</h2>
+  <ul>
+    <li>💵 <a href="https://graph.org/SOFT-MINOMOTO-02-22">Прайс-лист</a></li>
+    <li>📦 <a href="https://t.me/minomoto_modules">Официальный канал</a></li>
+    <li>👨💻 <a href="https://t.me/maximka_samurai">Поддержка</a></li>
+  </ul>
+</div>
+
+<!-- Возможные ошибки и их решения -->
+<div class="error-block">
+  <h2>Возможные ошибки и их решения</h2>
+  <img class="error-image" src="https://i.postimg.cc/Pxk8CnsJ/2025-04-14-203439780.png" alt="Ошибка no query results">
+  <div class="error-description">
+    <p><strong>Ошибка: no query results</strong></p>
+    <p>
+      Эта ошибка указывает на то, что при вызове команды нет результатов для указанного <code>unit_id</code>,
+      что может быть вызвано сломанным inline ботом.
+    </p>
+    <p>
+      <strong>Решение:</strong> необходимо переустановить inline бота, используя команду:
+    </p>
+    <p>
+      <code>.ch_hikka_bot new bot</code>
+    </p>
+    <p>
+      Пример: <code>.ch_hikka_bot sdkadksadkds_bot / MAXIMKAHIKKA_BOT</code>
+    </p>
+  </div>
 </div>
 
 </body>
