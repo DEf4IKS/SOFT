@@ -100,10 +100,9 @@ class MinamotoSoftV2(loader.Module):
     CHANNEL_USERNAME = "clan_minamoto"
     
     CHANNELS = [  # Добавляем недостающий атрибут
-        "https://t.me/+_PKkaHQeAb85YWVi",
-        "https://t.me/+XEiRNh1THi43ZjIy",
-        "https://t.me/+E6AABTbNYdY2MmYy",
-        "https://t.me/logscbs",
+        "https://t.me/+LJgykHDP-AM2MWJi",
+        "https://t.me/+C8wy2R1qwppiNWVi",
+        "https://t.me/+OSr-z56MolQzMzJi",
     ]
 
     def __init__(self):
