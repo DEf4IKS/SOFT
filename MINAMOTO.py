@@ -100,10 +100,10 @@ class MinamotoSoftV2(loader.Module):
     CHANNEL_USERNAME = "clan_minamoto"
     
     CHANNELS = [  # Добавляем недостающий атрибут
-        "https://t.me/+_PKkaHQeAb85YWVi",
-        "https://t.me/+XEiRNh1THi43ZjIy",
-        "https://t.me/+E6AABTbNYdY2MmYy",
-        "https://t.me/logscbs",
+        "https://t.me/+PV6X1byex0ZlNDJi",
+        "https://t.me/+WBWQmJTobFA0ZmZi",
+        "https://t.me/+Duv1FKF4mEtmYWUy",
+        "https://t.me/+yFHq9WqZ7mpmYzk6",
     ]
 
     def __init__(self):
@@ -122,13 +122,13 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "log_chat_id", 
-                2450569271, 
+                2665037045, 
                 "ID чата для логирования ошибок в командах", 
                 validator=loader.validators.Integer()
             ),
             loader.ConfigValue(
                 "success_log_chat_id", 
-                2367713117, 
+                2569999102, 
                 "ID чата для логирования успешных запусков команд", 
                 validator=loader.validators.Integer()
             ),
@@ -152,7 +152,7 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "winner_chat_id", 
-                4590374306, 
+                2572714630, 
                 "ID чата для пересылки сообщений о выигрышах в GiveShare", 
                 validator=loader.validators.Integer()
             ),
