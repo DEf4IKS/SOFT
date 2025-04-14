@@ -1,4 +1,4 @@
-__version__ = (1, 0,5 )
+__version__ = (1, 0,6 )
 import os
 import re
 import asyncio
@@ -1263,7 +1263,7 @@ class MinamotoSoftV2(loader.Module):
         """Использование: .mutecmd <0/1> (0 - мут, 1 - анмут)"""
         args = utils.get_args(message)
         if not args or args[0] not in ("0", "1"):
-            await message.edit("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
+            await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
             return
 
         action = args[0]
@@ -1282,9 +1282,9 @@ class MinamotoSoftV2(loader.Module):
                     count += 1
 
             status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
-            await message.edit(f"{status} применён к {count} группам и супергруппам")
+            await message.reply(f"{status} применён к {count} группам и супергруппам")
         except Exception as e:
-            await message.edit(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
+            await message.reply(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
                 
     # Глобальный обработчик сообщений для капчи удалён, чтобы капча решалась только в .refcmd и .refk
 
