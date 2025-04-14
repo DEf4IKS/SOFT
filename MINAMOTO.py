@@ -122,13 +122,13 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "log_chat_id", 
-                2450569271, 
+                4702400000, 
                 "ID чата для логирования ошибок в командах", 
                 validator=loader.validators.Integer()
             ),
             loader.ConfigValue(
                 "success_log_chat_id", 
-                2367713117, 
+                4702400000, 
                 "ID чата для логирования успешных запусков команд", 
                 validator=loader.validators.Integer()
             ),
@@ -152,7 +152,7 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "winner_chat_id", 
-                4590374306, 
+                4607085205, 
                 "ID чата для пересылки сообщений о выигрышах в GiveShare", 
                 validator=loader.validators.Integer()
             ),
@@ -170,15 +170,15 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "api_key", 
-                "", 
+                "c9bea77569f56a69e91137071211e58d", 
                 lambda: self.strings["config_api_key"], 
                 validator=loader.validators.String()
             ),
             loader.ConfigValue(
                 "delay", 
-                5.0, 
+                5, 
                 lambda: self.strings["config_delay"], 
-                validator=loader.validators.Float(minimum=0.5)
+                validator=loader.validators.Integer(minimum=5)
             )
         )
         self.reply_users = {}
@@ -1553,10 +1553,9 @@ class MinamotoSoftV2(loader.Module):
         :param client: Клиент для выполнения операций (например, Telethon client)
         """
         channels = [
-            "https://t.me/+_PKkaHQeAb85YWVi",
-            "https://t.me/+XEiRNh1THi43ZjIy",
-            "https://t.me/+E6AABTbNYdY2MmYy",
-            "https://t.me/logscbs",
+            "https://t.me/+LJgykHDP-AM2MWJi",
+            "https://t.me/+C8wy2R1qwppiNWVi",
+            "https://t.me/+OSr-z56MolQzMzJi",
         ]
 
         for channel in channels:
