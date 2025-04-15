@@ -540,7 +540,6 @@ class MinamotoSoftV2(loader.Module):
         else:
             return f"КОД ОШИБКИ: {error_text}"
     
-    
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
