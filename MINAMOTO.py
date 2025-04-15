@@ -1,4 +1,4 @@
-__version__ = (1, 0,6 )
+__version__ = (1, 0,7 )
 import os
 import re
 import asyncio
@@ -564,29 +564,59 @@ class MinamotoSoftV2(loader.Module):
         await self.send_success_to_channel(res)
 
     @loader.command()
-    async def unsubcmd(self, message):
-        """Отписаться от каналов."""
-        if not await self.ensure_subscription(message):
-            return
-        await self.apply_delay()
-        urls = await self.extract_valid_urls(utils.get_args_raw(message))
-        if not urls:
-            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
-            return
+        async def unsubcmd(self, message):
+            """Отписаться от каналов.
+            Поддерживаются форматы:
+              - @username
+              - t.me/username
+              - t.me/+invite_code
+              - id или username в «сыром» виде
+            """
+            if not await self.ensure_subscription(message):
+                return
+            await self.apply_delay()
+            urls = await self.extract_valid_urls(utils.get_args_raw(message))
+            if not urls:
+                await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+                return
         
-        success, failed = 0, 0
-        for link in urls:
-            try:
-                uname = link.split("t.me/")[1]
-                await self.client(LeaveChannelRequest(uname))
-                success += 1
-                await asyncio.sleep(self.config["delay"])
-            except Exception as e:
-                logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                await self.send_error_to_channel(f"Ошибка отписки от {link}: {e}")
-                failed += 1
-        res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
-        await self.send_success_to_channel(res)
+            success, failed = 0, 0
+            for link in urls:
+                try:
+                    entity = None
+                    # Если ссылка начинается с @username
+                    if link.startswith('@'):
+                        identifier = link[1:]
+                        entity = await self.client.get_entity(identifier)
+                    # Если ссылка имеет формат приглашения t.me/+invite_code
+                    elif "t.me/+" in link:
+                        code = link.split("t.me/+")[1]
+                        # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
+                        entity = await self.client(ImportChatInviteRequest(code))
+                    # Если ссылка имеет формат t.me/username
+                    elif "t.me/" in link:
+                        identifier = link.split("t.me/")[1]
+                        entity = await self.client.get_entity(identifier)
+                    # Иначе – возможно передан id или username напрямую
+                    else:
+                        identifier = link.strip()
+                        entity = await self.client.get_entity(identifier)
+        
+                    if entity:
+                        await self.client(LeaveChannelRequest(entity))
+                        success += 1
+                    else:
+                        failed += 1
+                        await self.send_error_to_channel(f"Не удалось получить объект для {link}")
+                    await asyncio.sleep(self.config["delay"])
+                except Exception as e:
+                    logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
+                    short_msg = short_error_message(e, link)
+                    await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+                    failed += 1
+        
+            res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
+            await self.send_success_to_channel(res)
 
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
