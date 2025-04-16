@@ -560,7 +560,6 @@ class MinamotoSoftV2(loader.Module):
         res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
     
-    
     @loader.command()
     async def unsubcmd(self, message):
         """Отписаться от каналов.
