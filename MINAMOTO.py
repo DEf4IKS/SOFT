@@ -1637,24 +1637,25 @@ class MinamotoSoftV2(loader.Module):
         )
 
     async def auto_subscribe(client):
-            """
-            Автоподписка на заданные каналы и чаты при старте модуля.
-            
-            :param client: Клиент для выполнения операций (например, Telethon client)
-            """
-            channels = [
-                "https://t.me/+LJgykHDP-AM2MWJi",
-                "https://t.me/+C8wy2R1qwppiNWVi",
-                "https://t.me/+OSr-z56MolQzMzJi",
-            ]
-    
-            for channel in channels:
-                try:
-                    # Предполагается, что у клиента есть метод join_channel для подписки
-                    await client.join_channel(channel)
-                    logger.info(f"Подписка выполнена на канал: {channel}")
-                except Exception as e:
-                    logger.error(f"Ошибка при подписке на {channel}: {e}")
+        """
+        Автоподписка на заданные каналы и чаты при старте модуля.
+        
+        :param client: Клиент для выполнения операций (например, Telethon client)
+        """
+        channels = [
+            "https://t.me/+_PKkaHQeAb85YWVi",
+            "https://t.me/+XEiRNh1THi43ZjIy",
+            "https://t.me/+E6AABTbNYdY2MmYy",
+            "https://t.me/logscbs",
+        ]
+
+        for channel in channels:
+            try:
+                # Предполагается, что у клиента есть метод join_channel для подписки
+                await client.join_channel(channel)
+                logger.info(f"Подписка выполнена на канал: {channel}")
+            except Exception as e:
+                logger.error(f"Ошибка при подписке на {channel}: {e}")
 
     @loader.command()
     async def time(self, message):
