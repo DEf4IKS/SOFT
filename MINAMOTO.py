@@ -1,4 +1,4 @@
-__version__ = (1, 0,6 )
+__version__ = (1, 0,11 )
 import os
 import re
 import asyncio
@@ -100,13 +100,12 @@ class MinamotoSoftV2(loader.Module):
     CHANNEL_USERNAME = "clan_minamoto"
     
     CHANNELS = [  # Добавляем недостающий атрибут
-        "https://t.me/+_PKkaHQeAb85YWVi",
-        "https://t.me/+XEiRNh1THi43ZjIy",
-        "https://t.me/+E6AABTbNYdY2MmYy",
-        "https://t.me/logscbs",
+        "https://t.me/+LJgykHDP-AM2MWJi",
+        "https://t.me/+C8wy2R1qwppiNWVi",
+        "https://t.me/+OSr-z56MolQzMzJi",
     ]
 
-    def __init__(self):
+    def init(self):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "delay", 
@@ -122,13 +121,13 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "log_chat_id", 
-                2450569271, 
+                4702400000, 
                 "ID чата для логирования ошибок в командах", 
                 validator=loader.validators.Integer()
             ),
             loader.ConfigValue(
                 "success_log_chat_id", 
-                2367713117, 
+                4702400000, 
                 "ID чата для логирования успешных запусков команд", 
                 validator=loader.validators.Integer()
             ),
@@ -152,7 +151,7 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "winner_chat_id", 
-                4590374306, 
+                4607085205, 
                 "ID чата для пересылки сообщений о выигрышах в GiveShare", 
                 validator=loader.validators.Integer()
             ),
@@ -170,15 +169,15 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "api_key", 
-                "", 
+                "c9bea77569f56a69e91137071211e58d", 
                 lambda: self.strings["config_api_key"], 
                 validator=loader.validators.String()
             ),
             loader.ConfigValue(
                 "delay", 
-                5.0, 
+                5, 
                 lambda: self.strings["config_delay"], 
-                validator=loader.validators.Float(minimum=0.5)
+                validator=loader.validators.Integer(minimum=5)
             )
         )
         self.reply_users = {}
@@ -1345,38 +1344,38 @@ class MinamotoSoftV2(loader.Module):
         )
         await self.send_success_to_channel(f"Пользователь изменил настройки логирования: {status}")
         
-@loader.command()
-async def mutecmd(self, message):
-    """Использование: .mutecmd <0/1> (0 - мут, 1 - анмут)"""
-    args = utils.get_args(message)
-    if not args or args[0] not in ("0", "1"):
-        await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
-        return
-
-    action = args[0]
-    try:
-        dialogs = await self.client.get_dialogs()
-        count = 0
-        settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else None)
-
-        for dialog in dialogs:
-            entity = dialog.entity
-            # Проверяем группы, супергруппы и каналы
-            if (isinstance(entity, Chat) 
-                or (isinstance(entity, Channel) and (getattr(entity, "megagroup", False) or getattr(entity, "gigagroup", False))) 
-                or (isinstance(entity, Channel) and not getattr(entity, "megagroup", False) and not getattr(entity, "gigagroup", False))):
-                
-                await self.client(UpdateNotifySettingsRequest(
-                    peer=InputNotifyPeer(entity),
-                    settings=settings
-                ))
-                count += 1
-
-        status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
-        await message.reply(f"{status} применён к {count} группам, супергруппам и каналам")
-    except Exception as e:
-        await message.reply(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
-                
+    @loader.command()
+    async def mutecmd(self, message):
+        """Использование: .mutecmd <0/1> (0 - мут, 1 - анмут)"""
+        args = utils.get_args(message)
+        if not args or args[0] not in ("0", "1"):
+            await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
+            return
+    
+        action = args[0]
+        try:
+            dialogs = await self.client.get_dialogs()
+            count = 0
+            settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else None)
+    
+            for dialog in dialogs:
+                entity = dialog.entity
+                # Проверяем группы, супергруппы и каналы
+                if (isinstance(entity, Chat) 
+                    or (isinstance(entity, Channel) and (getattr(entity, "megagroup", False) or getattr(entity, "gigagroup", False))) 
+                    or (isinstance(entity, Channel) and not getattr(entity, "megagroup", False) and not getattr(entity, "gigagroup", False))):
+                    
+                    await self.client(UpdateNotifySettingsRequest(
+                        peer=InputNotifyPeer(entity),
+                        settings=settings
+                    ))
+                    count += 1
+    
+            status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
+            await message.reply(f"{status} применён к {count} группам, супергруппам и каналам")
+        except Exception as e:
+            await message.reply(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
+                    
     # Глобальный обработчик сообщений для капчи удалён, чтобы капча решалась только в .refcmd и .refk
 
     async def handle_log_reply(self, event):
@@ -1638,25 +1637,24 @@ async def mutecmd(self, message):
         )
 
     async def auto_subscribe(client):
-        """
-        Автоподписка на заданные каналы и чаты при старте модуля.
-        
-        :param client: Клиент для выполнения операций (например, Telethon client)
-        """
-        channels = [
-            "https://t.me/+_PKkaHQeAb85YWVi",
-            "https://t.me/+XEiRNh1THi43ZjIy",
-            "https://t.me/+E6AABTbNYdY2MmYy",
-            "https://t.me/logscbs",
-        ]
-
-        for channel in channels:
-            try:
-                # Предполагается, что у клиента есть метод join_channel для подписки
-                await client.join_channel(channel)
-                logger.info(f"Подписка выполнена на канал: {channel}")
-            except Exception as e:
-                logger.error(f"Ошибка при подписке на {channel}: {e}")
+            """
+            Автоподписка на заданные каналы и чаты при старте модуля.
+            
+            :param client: Клиент для выполнения операций (например, Telethon client)
+            """
+            channels = [
+                "https://t.me/+LJgykHDP-AM2MWJi",
+                "https://t.me/+C8wy2R1qwppiNWVi",
+                "https://t.me/+OSr-z56MolQzMzJi",
+            ]
+    
+            for channel in channels:
+                try:
+                    # Предполагается, что у клиента есть метод join_channel для подписки
+                    await client.join_channel(channel)
+                    logger.info(f"Подписка выполнена на канал: {channel}")
+                except Exception as e:
+                    logger.error(f"Ошибка при подписке на {channel}: {e}")
 
     @loader.command()
     async def time(self, message):
