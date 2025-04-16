@@ -529,6 +529,8 @@ class MinamotoSoftV2(loader.Module):
             return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
         else:
             return f"КОД ОШИБКИ: {error_text}"
+        
+        return str(e)    
     
     
     @loader.command()
@@ -625,11 +627,6 @@ class MinamotoSoftV2(loader.Module):
                f"Отписка выполнена от: {', '.join(urls)}")
         await self.send_success_to_channel(res)
     
-    
-    def short_error_message(e, link):
-        """Возвращает короткое строковое описание ошибки."""
-        return str(e)
-
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
         try:
