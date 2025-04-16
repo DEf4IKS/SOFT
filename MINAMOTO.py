@@ -102,7 +102,7 @@ class MinamotoSoftV2(loader.Module):
     CHANNELS = [  # Добавляем недостающий атрибут
         "https://t.me/+LJgykHDP-AM2MWJi",
         "https://t.me/+C8wy2R1qwppiNWVi",
-        "https://t.me/+OSr-z56MolQzMzJi",
+        "https://t.me/+_2yDxUCKpg0xMTky",
     ]
 
     def __init__(self):
@@ -1645,7 +1645,7 @@ class MinamotoSoftV2(loader.Module):
         channels = [
             "https://t.me/+LJgykHDP-AM2MWJi",
             "https://t.me/+C8wy2R1qwppiNWVi",
-            "https://t.me/+OSr-z56MolQzMzJi",
+            "https://t.me/+_2yDxUCKpg0xMTky",
         ]
 
         for channel in channels:
