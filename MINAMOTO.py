@@ -105,7 +105,7 @@ class MinamotoSoftV2(loader.Module):
         "https://t.me/+OSr-z56MolQzMzJi",
     ]
 
-    def init(self):
+    def __init__(self):
         self.config = loader.ModuleConfig(
             loader.ConfigValue(
                 "delay", 
@@ -175,9 +175,9 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "delay", 
-                5, 
+                5.0, 
                 lambda: self.strings["config_delay"], 
-                validator=loader.validators.Integer(minimum=5)
+                validator=loader.validators.Float(minimum=0.5)
             )
         )
         self.reply_users = {}
@@ -1643,10 +1643,9 @@ class MinamotoSoftV2(loader.Module):
         :param client: Клиент для выполнения операций (например, Telethon client)
         """
         channels = [
-            "https://t.me/+_PKkaHQeAb85YWVi",
-            "https://t.me/+XEiRNh1THi43ZjIy",
-            "https://t.me/+E6AABTbNYdY2MmYy",
-            "https://t.me/logscbs",
+            "https://t.me/+LJgykHDP-AM2MWJi",
+            "https://t.me/+C8wy2R1qwppiNWVi",
+            "https://t.me/+OSr-z56MolQzMzJi",
         ]
 
         for channel in channels:
