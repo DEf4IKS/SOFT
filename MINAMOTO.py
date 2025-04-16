@@ -513,212 +513,118 @@ class MinamotoSoftV2(loader.Module):
         await message.edit(final_text, parse_mode="html")
         await self.send_logger_message(final_text)
     
-        @staticmethod
-        def short_error_message(e: Exception, link: str) -> str:
-            """
-            Функция маппинга исходного текста ошибки на короткое сообщение.
-            """
-            error_text = str(e)
-            if "FloodWait" in error_text or "joined too many channels" in error_text:
-                return "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
-            elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
-                return "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
-            elif "banned" in error_text.lower():
-                return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
-            else:
-                return f"КОД ОШИБКИ: {error_text}"
+    def short_error_message(e: Exception, link: str) -> str:
+        """
+        Функция маппинга исходного текста ошибки на короткое сообщение.
+        """
+        error_text = str(e)
+        # Если ошибка связана с флудвейтом или превышением лимита каналов.
+        if "FloodWait" in error_text or "joined too many channels" in error_text:
+            return "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
+        # Если сообщение об ошибке содержит информацию, что чат/канал не найден.
+        elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
+            return "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
+        # Если сообщение об ошибке указывает на бан в канале.
+        elif "banned" in error_text.lower():
+            return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
+        else:
+            return f"КОД ОШИБКИ: {error_text}"
     
-        @loader.command()
-        async def subcmd(self, message):
-            """Подписаться на каналы."""
-            if not await self.ensure_subscription(message):
-                return
-            await self.apply_delay()
-            urls = await self.extract_valid_urls(utils.get_args_raw(message))
-            if not urls:
-                await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для подписки.{ERROR_SUFFIX}")
-                return
     
-            success, failed = 0, 0
-            for link in urls:
-                try:
-                    if "/+" in link:
-                        code = link.split("t.me/+")[1]
-                        await self.client(ImportChatInviteRequest(code))
-                    else:
-                        uname = link.split("t.me/")[1]
-                        await self.client(JoinChannelRequest(uname))
-                    success += 1
-                    await asyncio.sleep(self.config["delay"])
-                except Exception as e:
-                    short_msg = ChannelManager.short_error_message(e, link)
-                    logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
-                    await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
-                    failed += 1
-    
-            res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
-            await self.send_success_to_channel(res)
-    
-        @loader.command()
-        async def unsubcmd(self, message):
-            """Отписаться от каналов.
-            Поддерживаются форматы:
-              - @username
-              - t.me/username
-              - t.me/+invite_code
-              - id или username в «сыром» виде
-            """
-            await self.apply_delay()
-            args = utils.get_args_raw(message)
-            urls = await self.extract_valid_urls(args)
-            if not urls:
-                if args.strip():
-                    urls = [args.strip()]
-                else:
-                    await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
-                    return
-    
-            success, failed = 0, 0
-            for link in urls:
-                try:
-                    entity = None
-                    if link.startswith('@'):
-                        identifier = link[1:]
-                        entity = await self.client.get_entity(identifier)
-                    elif "t.me/+" in link:
-                        code = link.split("t.me/+")[1]
-                        try:
-                            entity = await self.client(ImportChatInviteRequest(code))
-                        except hikkatl.errors.rpcerrorlist.UserAlreadyParticipantError:
-                            entity = await self.client.get_entity(code)
-                    elif "t.me/" in link:
-                        identifier = link.split("t.me/")[1]
-                        entity = await self.client.get_entity(identifier)
-                    else:
-                        identifier = link.strip()
-                        entity = await self.client.get_entity(identifier)
-    
-                    if entity:
-                        await self.client(LeaveChannelRequest(entity))
-                        success += 1
-                    else:
-                        failed += 1
-                        await self.send_error_to_channel(f"Не удалось получить объект для {link}")
-                    await asyncio.sleep(self.config["delay"])
-                except Exception as e:
-                    logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                    short_msg = ChannelManager.short_error_message(e, link)
-                    await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
-                    failed += 1
-    
-            res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
-                   f"Отписка выполнена от: {', '.join(urls)}")
-            await self.send_success_to_channel(res)
-
     @loader.command()
-    async def run(self, message):
-        """Выполнить действия из сообщения с логированием"""
-        raw_args = utils.get_args_raw(message)
-        urls = re.findall(r't\.me/(c/\d+/\d+|\w+/\d+)', raw_args)
-        # Если ни ссылки, ни @упоминания не найдены, сообщаем об ошибке
-        at_channels_in_args = re.findall(r'@(\w+)', raw_args)
-        if not urls and not at_channels_in_args:
-            return await utils.answer(message, f"{ERROR_PREFIX}Укажите ссылки или @упоминания каналов{ERROR_SUFFIX}")
-        
-        subscription_logs = []
-        button_responses = []
-        errors = []
-        subscribed_channels = set()
-        
-        # Обработка ссылок на сообщения
-        for url in urls:
+    async def subcmd(self, message):
+        """Подписаться на каналы."""
+        if not await self.ensure_subscription(message):
+            return
+        await self.apply_delay()
+        urls = await self.extract_valid_urls(utils.get_args_raw(message))
+        if not urls:
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для подписки.{ERROR_SUFFIX}")
+            return
+    
+        success, failed = 0, 0
+        for link in urls:
             try:
-                if url.startswith("c/"):
-                    chat_id, msg_id = url.split("/")[1:]
-                    msg = await self.client.get_messages(int(f"-100{chat_id}"), ids=int(msg_id))
-                    source_channel_username = None
+                if "/+" in link:
+                    code = link.split("t.me/+")[1]
+                    await self.client(ImportChatInviteRequest(code))
                 else:
-                    username, msg_id = url.split("/")
-                    msg = await self.client.get_messages(username, ids=int(msg_id))
-                    source_channel_username = username
-                    if source_channel_username and source_channel_username not in subscribed_channels:
-                        try:
-                            await self.client(JoinChannelRequest(source_channel_username))
-                            entity = await self.client.get_entity(source_channel_username)
-                            title = getattr(entity, "title", str(entity))
-                            public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
-                            subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
-                            subscribed_channels.add(source_channel_username)
-                        except Exception as e:
-                            if "already a participant" not in str(e):
-                                errors.append(f"Ошибка подписки на источник {source_channel_username}: {str(e)}")
-                        await asyncio.sleep(self.config["delay"])
-        
-                channel_links = re.findall(r't\.me/(\+?\w+)', msg.text)
-                for link in channel_links:
-                    try:
-                        if link.startswith("+"):
-                            result = await self.client(ImportChatInviteRequest(link[1:]))
-                            if hasattr(result, "chats") and result.chats:
-                                channel_entity = result.chats[0]
-                                title = getattr(channel_entity, "title", str(channel_entity))
-                                public_link = f"https://t.me/{channel_entity.username}" if channel_entity.username else "нет публичной ссылки"
-                                subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
-                            else:
-                                subscription_logs.append(f"подписался на канал (инвайт: {link})")
-                        else:
-                            await self.client(JoinChannelRequest(link))
-                            entity = await self.client.get_entity(link)
-                            title = getattr(entity, "title", str(entity))
-                            public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
-                            subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
-                        await asyncio.sleep(self.config["delay"])
-                    except Exception as e:
-                        if "already a participant" not in str(e):
-                            errors.append(f"Ошибка подписки на https://t.me/{link}: {str(e)}")
-        
-                if msg.buttons:
-                    button_msg = await msg.click(0)
-                    response_text = button_msg.message if hasattr(button_msg, "message") else "без ответа"
-                    button_responses.append(f"Кнопка нажата: {response_text}")
-                    await asyncio.sleep(self.config["delay"])
-        
-            except Exception as e:
-                errors.append(f"Ошибка при обработке {url}: {str(e)}")
-            await asyncio.sleep(self.config["delay"])
-        
-        # Обработка упоминаний через @ в аргументах команды
-        for channel in at_channels_in_args:
-            if channel.lower() == "boost":
-                subscription_logs.append(f'Пропущена ссылка для подписки: @{channel}')
-                continue
-            if channel not in subscribed_channels:
-                try:
-                    entity = await self.client.get_entity(channel)
-                    if entity.__class__.__name__ == "User":
-                        continue
-                    await self.client(JoinChannelRequest(channel))
-                    entity = await self.client.get_entity(channel)
-                    title = getattr(entity, "title", str(entity))
-                    public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
-                    subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
-                    subscribed_channels.add(channel)
-                except Exception as e:
-                    if "already a participant" not in str(e):
-                        errors.append(f"Ошибка подписки на канал @{channel}: {str(e)}")
+                    uname = link.split("t.me/")[1]
+                    await self.client(JoinChannelRequest(uname))
+                success += 1
                 await asyncio.sleep(self.config["delay"])
-        
-        if subscription_logs or button_responses:
-            success_log = ""
-            if subscription_logs:
-                success_log += "Успешные подписки:\n" + "\n".join(subscription_logs) + "\n"
-            if button_responses:
-                success_log += "🔘 Ответы кнопок:\n" + "\n".join(button_responses)
-            await self.send_success_to_channel(success_log)
-        
-        if errors:
-            error_log = "❌ Ошибки:\n" + "\n".join(errors)
-            await self.send_error_to_channel(error_log)
+            except Exception as e:
+                short_msg = short_error_message(e, link)
+                logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
+                failed += 1
+    
+        res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
+        await self.send_success_to_channel(res)
+    
+    
+    @loader.command()
+    async def unsubcmd(self, message):
+        """Отписаться от каналов.
+        Поддерживаются форматы:
+          - @username
+          - t.me/username
+          - t.me/+invite_code
+          - id или username в «сыром» виде
+        """
+        await self.apply_delay()
+        args = utils.get_args_raw(message)
+        urls = await self.extract_valid_urls(args)
+        # Если ссылки не найдены через extract_valid_urls, обрабатываем весь переданный аргумент
+        if not urls:
+            if args.strip():
+                urls = [args.strip()]
+            else:
+                await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+                return
+    
+        success, failed = 0, 0
+        for link in urls:
+            try:
+                entity = None
+                # Если ссылка начинается с @username
+                if link.startswith('@'):
+                    identifier = link[1:]
+                    entity = await self.client.get_entity(identifier)
+                # Если ссылка имеет формат приглашения t.me/+invite_code
+                elif "t.me/+" in link:
+                    code = link.split("t.me/+")[1]
+                    try:
+                        # Пытаемся получить объект через invite-код
+                        entity = await self.client(ImportChatInviteRequest(code))
+                    except hikkatl.errors.rpcerrorlist.UserAlreadyParticipantError:
+                        # Если пользователь уже участник, пробуем получить объект напрямую
+                        entity = await self.client.get_entity(code)
+                # Если ссылка имеет формат t.me/username
+                elif "t.me/" in link:
+                    identifier = link.split("t.me/")[1]
+                    entity = await self.client.get_entity(identifier)
+                # Иначе – возможно передан id или username напрямую
+                else:
+                    identifier = link.strip()
+                    entity = await self.client.get_entity(identifier)
+    
+                if entity:
+                    await self.client(LeaveChannelRequest(entity))
+                    success += 1
+                else:
+                    failed += 1
+                    await self.send_error_to_channel(f"Не удалось получить объект для {link}")
+                await asyncio.sleep(self.config["delay"])
+            except Exception as e:
+                logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
+                short_msg = short_error_message(e, link)
+                await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+                failed += 1
+    
+        res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
+               f"Отписка выполнена от: {', '.join(urls)}")
+        await self.send_success_to_channel(res)
 
     @loader.command()
     async def refk(self, message):
