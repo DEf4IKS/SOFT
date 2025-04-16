@@ -1,4 +1,4 @@
-__version__ = (1, 0,7 )
+__version__ = (1, 0,8 )
 import os
 import re
 import asyncio
@@ -514,24 +514,6 @@ class MinamotoSoftV2(loader.Module):
         await message.edit(final_text, parse_mode="html")
         await self.send_logger_message(final_text)
     
-    def short_error_message(e: Exception, link: str) -> str:
-        """
-        Функция маппинга исходного текста ошибки на короткое сообщение.
-        """
-        error_text = str(e)
-        # Если ошибка связана с флудвейтом или превышением лимита каналов.
-        if "FloodWait" in error_text or "joined too many channels" in error_text:
-            return "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
-        # Если сообщение об ошибке содержит информацию, что чат/канал не найден.
-        elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
-            return "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
-        # Если сообщение об ошибке указывает на бан в канале.
-        elif "banned" in error_text.lower():
-            return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
-        else:
-            return f"КОД ОШИБКИ: {error_text}"
-    
-    
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
@@ -555,14 +537,24 @@ class MinamotoSoftV2(loader.Module):
                 success += 1
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
-                short_msg = short_error_message(e, link)
+                error_text = str(e)
+                # Маппинг текста ошибки на короткое сообщение.
+                if "FloodWait" in error_text or "joined too many channels" in error_text:
+                    short_msg = "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
+                elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
+                    short_msg = "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
+                elif "banned" in error_text.lower():
+                    short_msg = "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
+                else:
+                    short_msg = f"КОД ОШИБКИ: {error_text}"
                 logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
                 await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
                 failed += 1
     
         res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
-
+    
+    
     @loader.command()
     async def unsubcmd(self, message):
         """Отписаться от каналов.
@@ -591,7 +583,6 @@ class MinamotoSoftV2(loader.Module):
                 # Если ссылка имеет формат приглашения t.me/+invite_code
                 elif "t.me/+" in link:
                     code = link.split("t.me/+")[1]
-                    # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
                     entity = await self.client(ImportChatInviteRequest(code))
                 # Если ссылка имеет формат t.me/username
                 elif "t.me/" in link:
@@ -611,8 +602,7 @@ class MinamotoSoftV2(loader.Module):
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
                 logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                short_msg = short_error_message(e, link)
-                await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+                await self.send_error_to_channel(f"Ошибка отписки от {link}: {e}")
                 failed += 1
     
         res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
