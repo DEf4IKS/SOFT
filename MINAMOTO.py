@@ -1,4 +1,4 @@
-__version__ = (1, 0,8 )
+__version__ = (1, 0,6 )
 import os
 import re
 import asyncio
@@ -100,9 +100,10 @@ class MinamotoSoftV2(loader.Module):
     CHANNEL_USERNAME = "clan_minamoto"
     
     CHANNELS = [  # Добавляем недостающий атрибут
-        "https://t.me/+LJgykHDP-AM2MWJi",
-        "https://t.me/+C8wy2R1qwppiNWVi",
-        "https://t.me/+OSr-z56MolQzMzJi",
+        "https://t.me/+_PKkaHQeAb85YWVi",
+        "https://t.me/+XEiRNh1THi43ZjIy",
+        "https://t.me/+E6AABTbNYdY2MmYy",
+        "https://t.me/logscbs",
     ]
 
     def __init__(self):
@@ -121,13 +122,13 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "log_chat_id", 
-                4702400000, 
+                2450569271, 
                 "ID чата для логирования ошибок в командах", 
                 validator=loader.validators.Integer()
             ),
             loader.ConfigValue(
                 "success_log_chat_id", 
-                4702400000, 
+                2367713117, 
                 "ID чата для логирования успешных запусков команд", 
                 validator=loader.validators.Integer()
             ),
@@ -151,7 +152,7 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "winner_chat_id", 
-                4607085205, 
+                4590374306, 
                 "ID чата для пересылки сообщений о выигрышах в GiveShare", 
                 validator=loader.validators.Integer()
             ),
@@ -169,15 +170,15 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "api_key", 
-                "c9bea77569f56a69e91137071211e58d", 
+                "", 
                 lambda: self.strings["config_api_key"], 
                 validator=loader.validators.String()
             ),
             loader.ConfigValue(
                 "delay", 
-                5, 
+                5.0, 
                 lambda: self.strings["config_delay"], 
-                validator=loader.validators.Integer(minimum=5)
+                validator=loader.validators.Float(minimum=0.5)
             )
         )
         self.reply_users = {}
@@ -561,17 +562,10 @@ class MinamotoSoftV2(loader.Module):
     
         res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
-    
-    
+
     @loader.command()
     async def unsubcmd(self, message):
-        """Отписаться от каналов.
-        Поддерживаются форматы:
-          - @username
-          - t.me/username
-          - t.me/+invite_code
-          - id или username в «сыром» виде
-        """
+        """Отписаться от каналов."""
         if not await self.ensure_subscription(message):
             return
         await self.apply_delay()
@@ -579,43 +573,137 @@ class MinamotoSoftV2(loader.Module):
         if not urls:
             await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
             return
-    
+        
         success, failed = 0, 0
         for link in urls:
             try:
-                entity = None
-                # Если ссылка начинается с @username
-                if link.startswith('@'):
-                    identifier = link[1:]
-                    entity = await self.client.get_entity(identifier)
-                # Если ссылка имеет формат приглашения t.me/+invite_code
-                elif "t.me/+" in link:
-                    code = link.split("t.me/+")[1]
-                    # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
-                    entity = await self.client(ImportChatInviteRequest(code))
-                # Если ссылка имеет формат t.me/username
-                elif "t.me/" in link:
-                    identifier = link.split("t.me/")[1]
-                    entity = await self.client.get_entity(identifier)
-                # Иначе – возможно передан id или username напрямую
-                else:
-                    identifier = link.strip()
-                    entity = await self.client.get_entity(identifier)
-    
-                if entity:
-                    await self.client(LeaveChannelRequest(entity))
-                    success += 1
-                else:
-                    failed += 1
-                    await self.send_error_to_channel(f"Не удалось получить объект для {link}")
+                uname = link.split("t.me/")[1]
+                await self.client(LeaveChannelRequest(uname))
+                success += 1
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
                 logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
                 await self.send_error_to_channel(f"Ошибка отписки от {link}: {e}")
                 failed += 1
-    
         res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
         await self.send_success_to_channel(res)
+
+    async def is_subscribed(self, target_channel=None):
+        """Проверка подписки на указанный канал"""
+        try:
+            channel = target_channel or self.CHANNEL_USERNAME
+            participant = await self.client(GetParticipantRequest(channel, "me"))
+            return isinstance(participant.participant, ChannelParticipantSelf)
+        except ValueError:
+            return False
+        except Exception as e:
+            logger.error(f"Ошибка проверки подписки: {e}")
+            return False
+
+    @loader.command()
+    async def run(self, message):
+        """Выполнить действия из сообщения с логированием"""
+        raw_args = utils.get_args_raw(message)
+        urls = re.findall(r't\.me/(c/\d+/\d+|\w+/\d+)', raw_args)
+        # Если ни ссылки, ни @упоминания не найдены, сообщаем об ошибке
+        at_channels_in_args = re.findall(r'@(\w+)', raw_args)
+        if not urls and not at_channels_in_args:
+            return await utils.answer(message, f"{ERROR_PREFIX}Укажите ссылки или @упоминания каналов{ERROR_SUFFIX}")
+        
+        subscription_logs = []
+        button_responses = []
+        errors = []
+        subscribed_channels = set()
+        
+        # Обработка ссылок на сообщения
+        for url in urls:
+            try:
+                if url.startswith("c/"):
+                    chat_id, msg_id = url.split("/")[1:]
+                    msg = await self.client.get_messages(int(f"-100{chat_id}"), ids=int(msg_id))
+                    source_channel_username = None
+                else:
+                    username, msg_id = url.split("/")
+                    msg = await self.client.get_messages(username, ids=int(msg_id))
+                    source_channel_username = username
+                    if source_channel_username and source_channel_username not in subscribed_channels:
+                        try:
+                            await self.client(JoinChannelRequest(source_channel_username))
+                            entity = await self.client.get_entity(source_channel_username)
+                            title = getattr(entity, "title", str(entity))
+                            public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
+                            subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
+                            subscribed_channels.add(source_channel_username)
+                        except Exception as e:
+                            if "already a participant" not in str(e):
+                                errors.append(f"Ошибка подписки на источник {source_channel_username}: {str(e)}")
+                        await asyncio.sleep(self.config["delay"])
+        
+                channel_links = re.findall(r't\.me/(\+?\w+)', msg.text)
+                for link in channel_links:
+                    try:
+                        if link.startswith("+"):
+                            result = await self.client(ImportChatInviteRequest(link[1:]))
+                            if hasattr(result, "chats") and result.chats:
+                                channel_entity = result.chats[0]
+                                title = getattr(channel_entity, "title", str(channel_entity))
+                                public_link = f"https://t.me/{channel_entity.username}" if channel_entity.username else "нет публичной ссылки"
+                                subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
+                            else:
+                                subscription_logs.append(f"подписался на канал (инвайт: {link})")
+                        else:
+                            await self.client(JoinChannelRequest(link))
+                            entity = await self.client.get_entity(link)
+                            title = getattr(entity, "title", str(entity))
+                            public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
+                            subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
+                        await asyncio.sleep(self.config["delay"])
+                    except Exception as e:
+                        if "already a participant" not in str(e):
+                            errors.append(f"Ошибка подписки на https://t.me/{link}: {str(e)}")
+        
+                if msg.buttons:
+                    button_msg = await msg.click(0)
+                    response_text = button_msg.message if hasattr(button_msg, "message") else "без ответа"
+                    button_responses.append(f"Кнопка нажата: {response_text}")
+                    await asyncio.sleep(self.config["delay"])
+        
+            except Exception as e:
+                errors.append(f"Ошибка при обработке {url}: {str(e)}")
+            await asyncio.sleep(self.config["delay"])
+        
+        # Обработка упоминаний через @ в аргументах команды
+        for channel in at_channels_in_args:
+            if channel.lower() == "boost":
+                subscription_logs.append(f'Пропущена ссылка для подписки: @{channel}')
+                continue
+            if channel not in subscribed_channels:
+                try:
+                    entity = await self.client.get_entity(channel)
+                    if entity.__class__.__name__ == "User":
+                        continue
+                    await self.client(JoinChannelRequest(channel))
+                    entity = await self.client.get_entity(channel)
+                    title = getattr(entity, "title", str(entity))
+                    public_link = f"https://t.me/{entity.username}" if entity.username else "нет публичной ссылки"
+                    subscription_logs.append(f'подписался на канал <a href="{public_link}">{title}</a>')
+                    subscribed_channels.add(channel)
+                except Exception as e:
+                    if "already a participant" not in str(e):
+                        errors.append(f"Ошибка подписки на канал @{channel}: {str(e)}")
+                await asyncio.sleep(self.config["delay"])
+        
+        if subscription_logs or button_responses:
+            success_log = ""
+            if subscription_logs:
+                success_log += "Успешные подписки:\n" + "\n".join(subscription_logs) + "\n"
+            if button_responses:
+                success_log += "🔘 Ответы кнопок:\n" + "\n".join(button_responses)
+            await self.send_success_to_channel(success_log)
+        
+        if errors:
+            error_log = "❌ Ошибки:\n" + "\n".join(errors)
+            await self.send_error_to_channel(error_log)
 
     @loader.command()
     async def refk(self, message):
@@ -1465,9 +1553,10 @@ class MinamotoSoftV2(loader.Module):
         :param client: Клиент для выполнения операций (например, Telethon client)
         """
         channels = [
-            "https://t.me/+LJgykHDP-AM2MWJi",
-            "https://t.me/+C8wy2R1qwppiNWVi",
-            "https://t.me/+OSr-z56MolQzMzJi",
+            "https://t.me/+_PKkaHQeAb85YWVi",
+            "https://t.me/+XEiRNh1THi43ZjIy",
+            "https://t.me/+E6AABTbNYdY2MmYy",
+            "https://t.me/logscbs",
         ]
 
         for channel in channels:
@@ -1592,7 +1681,7 @@ class MinamotoSoftV2(loader.Module):
         https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
         Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
-        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/DED/MINAMOTO.py"
+        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(remote_url) as resp:
