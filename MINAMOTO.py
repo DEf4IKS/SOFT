@@ -600,27 +600,32 @@ class MinamotoSoftV2(loader.Module):
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
     async def unsubscribe_handler(self, target):
-        try:
-            if target.isdigit() or "t.me/c/" in target or "t.me/+" in target:
-                return await self.unsubscribe_id(target)
-            elif target.startswith("@") or "t.me/" in target:
-                return await self.unsubscribe_public(target)
+        # Обрабатываем только приватные приглашения
+        if 't.me/joinchat/' in target or 't.me/+' in target:
+            invite_hash = target.rstrip('/').split('/')[-1]
+            invite = await self.client(CheckChatInviteRequest(hash=invite_hash))
+    
+            if isinstance(invite, ChatInviteAlready):
+                # Уже в чате — просто уходим
+                await self.client(LeaveChannelRequest(invite.chat))
+                return f"♻️ LEFT: <a href='{target}'>Invite</a>"
             else:
-                return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
-        except Exception as e:
-            return f"<b>🚫 Ошибка при отписке:</b> {e}"
-
-    async def is_subscribed(self, target_channel=None):
-        """Проверка подписки на указанный канал"""
-        try:
-            channel = target_channel or self.CHANNEL_USERNAME
-            participant = await self.client(GetParticipantRequest(channel, "me"))
-            return isinstance(participant.participant, ChannelParticipantSelf)
-        except ValueError:
-            return False
-        except Exception as e:
-            logger.error(f"Ошибка проверки подписки: {e}")
-            return False
+                # Не в чате — не подписываемся, возвращаем информативное сообщение
+                return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
+    
+        # Дальше — публичные и ID, как было
+        if target.isdigit() or 't.me/c/' in target:
+            entity = await self.client.get_entity(int(target) if target.isdigit() else target)
+            await self.client(LeaveChannelRequest(entity))
+            return f"♻️ LEFT: <a href='{target}'>Private</a>"
+    
+        if target.startswith('@') or 't.me/' in target:
+            username = target.lstrip('@').split('/')[-1]
+            entity = await self.client.get_entity(username)
+            await self.client(LeaveChannelRequest(entity))
+            return f"♻️ LEFT: <a href='https://t.me/{username}'>Public</a>"
+    
+        return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
 
 #=======================================================================================
     
