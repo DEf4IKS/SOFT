@@ -571,8 +571,9 @@ class MinamotoSoftV2(loader.Module):
           - t.me/+invite_code
           - id или username в «сыром» виде
         """
-        if not await self.ensure_subscription(message):
-            return
+        # Если проверка обязательной подписки не нужна – её можно убрать.
+        # await self.ensure_subscription(message)
+    
         await self.apply_delay()
         urls = await self.extract_valid_urls(utils.get_args_raw(message))
         if not urls:
@@ -590,7 +591,7 @@ class MinamotoSoftV2(loader.Module):
                 # Если ссылка имеет формат приглашения t.me/+invite_code
                 elif "t.me/+" in link:
                     code = link.split("t.me/+")[1]
-                    # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
+                    # Для получения объекта канала/чата используем ImportChatInviteRequest
                     entity = await self.client(ImportChatInviteRequest(code))
                 # Если ссылка имеет формат t.me/username
                 elif "t.me/" in link:
@@ -614,7 +615,8 @@ class MinamotoSoftV2(loader.Module):
                 await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
                 failed += 1
     
-        res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
+        res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
+               f"Отписка выполнена от: {', '.join(urls)}")
         await self.send_success_to_channel(res)
 
     async def is_subscribed(self, target_channel=None):
