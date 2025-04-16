@@ -573,17 +573,8 @@ class MinamotoSoftV2(loader.Module):
             await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
             return
     
-        mult = 1
         delay = self.config.get("delay", 1)
         success, failed, done_message = 0, 0, ""
-        is_owner = message.chat_id == self.owner_chat
-    
-        form_logger = None
-        if self.config.get("logger", False) and is_owner:
-            form_logger = await self.inline.form(
-                message=self.owner_chat,
-                text="<b>⏳ Начало процесса отписки...</b>"
-            )
     
         for i, link in enumerate(urls, start=1):
             try:
@@ -594,8 +585,6 @@ class MinamotoSoftV2(loader.Module):
                 else:
                     failed += 1
                 await asyncio.sleep(delay)
-                if form_logger:
-                    await form_logger.edit(f"<b>✅ ПРОГРЕСС ({success + failed}/{len(urls)}):</b>\n{done_message}")
             except Exception as e:
                 failed += 1
                 logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
@@ -607,10 +596,7 @@ class MinamotoSoftV2(loader.Module):
             f"<b>Ссылки:</b> {', '.join(urls)}"
         )
     
-        if form_logger:
-            await form_logger.edit(f"{done_message}\n{result_text}")
-        else:
-            await self.send_success_to_channel(result_text)
+        await self.send_success_to_channel(f"{done_message}\n{result_text}")
     
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
