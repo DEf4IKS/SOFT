@@ -1,4 +1,4 @@
-__version__ = (1, 0,6 )
+__version__ = (1, 0,7 )
 import os
 import re
 import asyncio
@@ -12,6 +12,7 @@ import base64
 import json
 import urllib.parse
 import time
+import datetime
 import requests
 import tls_client
 import subprocess
@@ -173,6 +174,12 @@ class MinamotoSoftV2(loader.Module):
                 "", 
                 lambda: self.strings["config_api_key"], 
                 validator=loader.validators.String()
+            ),
+            loader.ConfigValue(
+                "auto_update_check",
+                True,
+                "Включить автоматическую проверку обновлений",
+                validator=loader.validators.Boolean()
             ),
             loader.ConfigValue(
                 "delay", 
@@ -376,6 +383,9 @@ class MinamotoSoftV2(loader.Module):
         def log(self, message: str):
             logger.info(message)
 
+        if self.config["auto_update_check"]:
+                asyncio.create_task(self.background_update_checker())
+
     async def ensure_subscription(self, message):
         if not await self.is_subscribed():
             await message.edit(self.strings["sub_required"])
@@ -531,7 +541,6 @@ class MinamotoSoftV2(loader.Module):
         else:
             return f"КОД ОШИБКИ: {error_text}"
     
-    
     @loader.command()
     async def subcmd(self, message):
         """Подписаться на каналы."""
@@ -565,60 +574,58 @@ class MinamotoSoftV2(loader.Module):
 
     @loader.command()
     async def unsubcmd(self, message):
-        """Отписаться от каналов.
-        Поддерживаются форматы:
-          - @username
-          - t.me/username
-          - t.me/+invite_code
-          - id или username в «сыром» виде
-        """
-        # Если проверка обязательной подписки не нужна – её можно убрать.
-        # await self.ensure_subscription(message)
-    
-        await self.apply_delay()
-        urls = await self.extract_valid_urls(utils.get_args_raw(message))
-        if not urls:
-            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
-            return
-    
-        success, failed = 0, 0
-        for link in urls:
-            try:
-                entity = None
-                # Если ссылка начинается с @username
-                if link.startswith('@'):
-                    identifier = link[1:]
-                    entity = await self.client.get_entity(identifier)
-                # Если ссылка имеет формат приглашения t.me/+invite_code
-                elif "t.me/+" in link:
-                    code = link.split("t.me/+")[1]
-                    # Для получения объекта канала/чата используем ImportChatInviteRequest
-                    entity = await self.client(ImportChatInviteRequest(code))
-                # Если ссылка имеет формат t.me/username
-                elif "t.me/" in link:
-                    identifier = link.split("t.me/")[1]
-                    entity = await self.client.get_entity(identifier)
-                # Иначе – возможно передан id или username напрямую
-                else:
-                    identifier = link.strip()
-                    entity = await self.client.get_entity(identifier)
-    
-                if entity:
-                    await self.client(LeaveChannelRequest(entity))
-                    success += 1
-                else:
-                    failed += 1
-                    await self.send_error_to_channel(f"Не удалось получить объект для {link}")
-                await asyncio.sleep(self.config["delay"])
-            except Exception as e:
-                logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                short_msg = short_error_message(e, link)
-                await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+    """Отписаться от каналов.
+    Поддерживаются форматы:
+      - @username
+      - t.me/username
+      - t.me/+invite_code
+      - id или username в «сыром» виде
+    """
+    if not await self.ensure_subscription(message):
+        return
+    await self.apply_delay()
+    urls = await self.extract_valid_urls(utils.get_args_raw(message))
+    if not urls:
+        await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+        return
+
+    success, failed = 0, 0
+    for link in urls:
+        try:
+            entity = None
+            # Если ссылка начинается с @username
+            if link.startswith('@'):
+                identifier = link[1:]
+                entity = await self.client.get_entity(identifier)
+            # Если ссылка имеет формат приглашения t.me/+invite_code
+            elif "t.me/+" in link:
+                code = link.split("t.me/+")[1]
+                # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
+                entity = await self.client(ImportChatInviteRequest(code))
+            # Если ссылка имеет формат t.me/username
+            elif "t.me/" in link:
+                identifier = link.split("t.me/")[1]
+                entity = await self.client.get_entity(identifier)
+            # Иначе – возможно передан id или username напрямую
+            else:
+                identifier = link.strip()
+                entity = await self.client.get_entity(identifier)
+
+            if entity:
+                await self.client(LeaveChannelRequest(entity))
+                success += 1
+            else:
                 failed += 1
-    
-        res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
-               f"Отписка выполнена от: {', '.join(urls)}")
-        await self.send_success_to_channel(res)
+                await self.send_error_to_channel(f"Не удалось получить объект для {link}")
+            await asyncio.sleep(self.config["delay"])
+        except Exception as e:
+            logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
+            short_msg = short_error_message(e, link)
+            await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+            failed += 1
+
+    res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
+    await self.send_success_to_channel(res)
 
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
@@ -1705,35 +1712,10 @@ class MinamotoSoftV2(loader.Module):
                 final_message += f" Но не удалось выйти из чата: {e}"
         await message.edit(final_message)
 
-    @loader.command()
+   @loader.command()
     async def pupdate(self, message):
-        """
-        Проверить обновление модуля.
-        Сравнивает текущую версию с версией кода из репозитория по адресу:
-        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
-        Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
-        """
-        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/WoRKER/MINAMOTO.py"
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(remote_url) as resp:
-                    if resp.status != 200:
-                        await message.reply("<b>Ошибка получения данных для обновления.</b>")
-                        return
-                    remote_code = await resp.text()
-            m = re.search(r"__version__\s*=\s*\(([\d,\s]+)\)", remote_code)
-            if not m:
-                await message.reply("<b>Невозможно определить версию удалённого модуля.</b>")
-                return
-            remote_version = tuple(map(int, m.group(1).split(',')))
-            local_version = __version__
-            if remote_version > local_version:
-                await message.reply("<b>Обнаружена новая версия. Обновляю модуль...</b>")
-                await self.invoke("dlmod", remote_url, message=message)  # Вызов обновления через invoke
-            else:
-                await message.reply("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
-        except Exception as e:
-            await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
+        """Проверить обновление модуля"""
+        await self.check_for_updates(silent=False)
 
     @loader.command()
     async def manual(self, message):
@@ -1769,6 +1751,60 @@ class MinamotoSoftV2(loader.Module):
                 f"Ссылка на документацию: {docs_url}"
             )
             await message.reply(error_msg)
+
+    async def background_update_checker(self):
+        while True:
+            try:
+                if self.config["auto_update_check"]:
+                    await self.check_for_updates(silent=False)
+            except Exception as e:
+                logger.error(f"Ошибка при проверке обновлений: {e}")
+            await asyncio.sleep(3600)  # Проверка каждый час
+    
+    # Модифицируем существующий метод проверки обновлений
+    async def check_for_updates(self, silent=True):
+        try:
+            remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/WoRKER/MINAMOTO.py"
+            async with aiohttp.ClientSession() as session:
+                async with session.get(remote_url) as resp:
+                    if resp.status != 200:
+                        if not silent:
+                            await self.send_error_to_channel("Ошибка получения данных для обновления")
+                        return
+                    remote_code = await resp.text()
+            
+            # Извлекаем версию из удаленного кода
+            m = re.search(r"__version__\s*=\s*\(([\d,\s]+)\)", remote_code)
+            if not m:
+                if not silent:
+                    await self.send_error_to_channel("Не удалось определить версию в удаленном файле")
+                return
+            
+            remote_version = tuple(map(int, m.group(1).split(',')))
+            local_version = __version__
+            
+            if remote_version > local_version:
+                msg = (
+                    f"<b>🎉 Доступно обновление!</b>\n"
+                    f"Текущая версия: <code>{'.'.join(map(str, local_version))}</code>\n"
+                    f"Новая версия: <code>{'.'.join(map(str, remote_version))}</code>\n\n"
+                    "Обновите модуль командой <code>.pupdate</code>"
+                )
+                await self.client.send_message(
+                    self.config["log_chat_id"],
+                    msg,
+                    parse_mode="HTML",
+                    link_preview=False
+                )
+            elif not silent:
+                await self.send_success_to_channel("Модуль актуален - обновлений не требуется")
+                
+        except Exception as e:
+            error_msg = f"🚫 Ошибка при проверке обновлений: {str(e)}"
+            logger.error(error_msg)
+            if not silent:
+                await self.send_error_to_channel(error_msg)
+
 
 def register(cb):
     cb(MinamotoSoftV2())   
