@@ -589,7 +589,17 @@ class MinamotoSoftV2(loader.Module):
                 # Если ссылка имеет формат приглашения t.me/+invite_code
                 elif "t.me/+" in link:
                     code = link.split("t.me/+")[1]
-                    entity = await self.client(ImportChatInviteRequest(code))
+                    # Попытка получить объект через ImportChatInviteRequest
+                    try:
+                        entity = await self.client(ImportChatInviteRequest(code))
+                    except Exception as ex:
+                        error_text = str(ex)
+                        # Если возникла ошибка о том, что пользователь уже участник,
+                        # пытаемся получить объект через get_entity
+                        if "already a participant" in error_text:
+                            entity = await self.client.get_entity(link)
+                        else:
+                            raise ex
                 # Если ссылка имеет формат t.me/username
                 elif "t.me/" in link:
                     identifier = link.split("t.me/")[1]
@@ -607,8 +617,13 @@ class MinamotoSoftV2(loader.Module):
                     await self.send_error_to_channel(f"Не удалось получить объект для {link}")
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
+                error_text = str(e)
+                if "already a participant" in error_text:
+                    short_msg = "КОД ОШИБКИ: УЖЕ УЧАСТНИК"
+                else:
+                    short_msg = f"КОД ОШИБКИ: {error_text}"
                 logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                await self.send_error_to_channel(f"Ошибка отписки от {link}: {e}")
+                await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
                 failed += 1
     
         res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
