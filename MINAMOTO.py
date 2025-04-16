@@ -562,140 +562,68 @@ class MinamotoSoftV2(loader.Module):
     
     @loader.command()
     async def unsubcmd(self, message):
-        """
-        Отписаться от каналов.
-        Поддерживаются форматы:
-          - @username
-          - t.me/username
-          - t.me/+invite_code
-          - t.me/c/<channel_id>
-          - цифровой id или «сырой» username
-        """
-        await self.handle_unsubscribe(message)
+        """Отписаться от каналов по ссылкам/ID/приглашениям."""
+        if not await self.ensure_subscription(message):
+            return
     
+        await self.apply_delay()
+        args = utils.get_args_raw(message)
+        urls = await self.extract_valid_urls(args)
+        if not urls:
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+            return
     
-    async def handle_unsubscribe(self, message):
-        try:
-            parts = message.message.split()
-            if len(parts) < 2:
-                await self.send_error_to_channel("🚫 Не указан список целей для отписки.")
-                return
-            # Если указано число, то используем его как множитель (но здесь просто задаём дефолтные значения)
-            mult = int(parts[1]) if parts[1].isdigit() else None
-            targetlist = parts[2:] if mult else parts[1:]
-            # Если сообщение не от владельца, используем базовые значения
-            if message.chat_id != self.owner_chat:
-                mult, delay_s = 1, 1
-            else:
-                mult, delay_s = 1, 1  # Здесь можно задать свои значения, если потребуется задержка
+        mult = 1
+        delay = self.config.get("delay", 1)
+        success, failed, done_message = 0, 0, ""
+        is_owner = message.chat_id == self.owner_chat
     
-            counter, success_count = 0, 0
-            form_logger = None
-            text_logger = None
+        form_logger = None
+        if self.config.get("logger", False) and is_owner:
+            form_logger = await self.inline.form(
+                message=self.owner_chat,
+                text="<b>⏳ Начало процесса отписки...</b>"
+            )
     
-            if self.config.get("logger"):
-                if len(targetlist) > 1:
-                    done_message = f"<b>💻 PACK: {self.config.get('group', 'Группа')}, M: x{mult}, KD: {delay_s} sec.</b>\n"
-                    form_logger = await self.inline.form(
-                        message=self.owner_chat,
-                        text=f"<b>{done_message}⏳ Идет процесс мультиотписок</b>"
-                    )
+        for i, link in enumerate(urls, start=1):
+            try:
+                result = await self.unsubscribe_handler(link)
+                done_message += f"{i}. {result}\n"
+                if "♻️" in result:
+                    success += 1
                 else:
-                    text_logger = ""
-    
-            for counter, target in enumerate(targetlist, start=1):
-                if target.isdigit() or "t.me/c/" in target or "t.me/+" in target:
-                    iteration = await self.unsubscribe_id(target)
-                elif target.startswith("@") or "t.me/" in target:
-                    iteration = await self.unsubscribe_public(target)
-                else:
-                    iteration = "<b>🚫 HANDLE UNSUBSCR: Неверный формат</b>"
-    
+                    failed += 1
+                await asyncio.sleep(delay)
                 if form_logger:
-                    done_message += f"{counter}. {iteration}\n"
-                    if "♻️" in iteration:
-                        success_count += 1
-                    await asyncio.sleep(5)
-                elif text_logger is not None:
-                    text_logger = iteration
+                    await form_logger.edit(f"<b>✅ ПРОГРЕСС ({success + failed}/{len(urls)}):</b>\n{done_message}")
+            except Exception as e:
+                failed += 1
+                logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"🚫 Ошибка отписки от {link}: {e}")
     
-            if form_logger:
-                await form_logger.edit(f"<b>{done_message}\n💬 Завершено. Успешно {success_count} из {len(targetlist)}.</b>")
-            elif text_logger is not None:
-                await self.send_success_to_channel(text_logger)
-        except Exception as e:
-            logger.error(f"Ошибка в handle_unsubscribe: {e}", exc_info=True)
-            await self.send_error_to_channel(f"<b>🚫 HANDLE UNSUBSCR:</b> {e}")
+        result_text = (
+            f"<b>✅ Отписка завершена.</b>\n"
+            f"<b>Успешно:</b> {success}, <b>Не удалось:</b> {failed}\n"
+            f"<b>Ссылки:</b> {', '.join(urls)}"
+        )
     
+        if form_logger:
+            await form_logger.edit(f"{done_message}\n{result_text}")
+        else:
+            await self.send_success_to_channel(result_text)
     
-    async def unsubscribe_public(self, target):
-        """
-        Отписка от публичных каналов.
-        Если target начинается с '@' или содержит "t.me/", пытаемся получить объект через get_entity,
-        затем вызываем LeaveChannelRequest. Если возникает ошибка приведения типа,
-        вызываем delete_dialog для удаления диалога.
-        """
+    # ============================ ОБРАБОТЧИК ССЫЛОК =============================
+    
+    async def unsubscribe_handler(self, target):
         try:
-            if target.startswith("@"):
-                username = target[1:]
-                link = f"https://t.me/{username}"
-            elif "t.me/" in target:
-                chan = target.split("t.me/")[1].split("/")[0]
-                link = f"https://t.me/{chan}"
-                username = chan
+            if target.isdigit() or "t.me/c/" in target or "t.me/+" in target:
+                return await self.unsubscribe_id(target)
+            elif target.startswith("@") or "t.me/" in target:
+                return await self.unsubscribe_public(target)
             else:
-                raise Exception("Неверный формат username")
-    
-            # Попытка получить объект канала
-            await self.client.get_entity(username)
-            await self.client(LeaveChannelRequest(username))
-            result = f"<b>♻️ UNSUBSCRIBE: <a href='{link}'>PUBLIC.</a></b>"
+                return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
         except Exception as e:
-            # Если ошибка связана с приведением типа, удаляем диалог
-            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e):
-                await self.client.delete_dialog(username)
-                result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
-            else:
-                result = f"<b>🚫 UNSUB:</b> {str(e)}"
-        return result
-    
-    
-    async def unsubscribe_id(self, target):
-        """
-        Отписка по идентификатору.
-        Поддерживаются форматы:
-          - t.me/c/<channel_id>
-          - t.me/+invite_code (получаем через get_entity)
-          - цифровой id
-        """
-        try:
-            if "t.me/c/" in target:
-                try:
-                    chan = target.split("t.me/c/")[1].split("/")[0]
-                    channel_id = int(chan)
-                    link = f"https://t.me/c/{channel_id}"
-                except IndexError:
-                    raise Exception("Неверный формат ссылки t.me/c/")
-            elif "t.me/+" in target:
-                target_entity = await self.client.get_entity(target)
-                channel_id = target_entity.id
-                link = f"https://t.me/c/{channel_id}"
-            elif target.isdigit():
-                channel_id = int(target)
-                link = f"https://t.me/c/{channel_id}"
-            else:
-                raise Exception("Неверный формат идентификатора")
-    
-            await self.client(LeaveChannelRequest(channel_id))
-            result = f"<b>♻️ UNSUBSCRIBE: <a href='{link}'>PRIVATE.</a></b>"
-        except Exception as e:
-            # Если возникает ошибка приведения типа, удаляем диалог
-            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e):
-                await self.client.delete_dialog(channel_id)
-                result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
-            else:
-                result = f"<b>🚫 UNSUBSCR:</b> {str(e)}"
-        return result
+            return f"<b>🚫 Ошибка при отписке:</b> {e}"
 
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
