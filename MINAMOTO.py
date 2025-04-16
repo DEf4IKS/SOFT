@@ -1345,33 +1345,37 @@ class MinamotoSoftV2(loader.Module):
             )
             await self.send_success_to_channel(f"Пользователь изменил настройки логирования: {status}")
             
-        @loader.command()
-        async def mutecmd(self, message):
-            """Использование: .mutecmd <0/1> (0 - мут, 1 - анмут)"""
-            args = utils.get_args(message)
-            if not args or args[0] not in ("0", "1"):
-                await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
-                return
+    @loader.command()
+    async def mutecmd(self, message):
+        """Использование: .mutecmd <0/1> (0 - мут, 1 - анмут)"""
+        args = utils.get_args(message)
+        if not args or args[0] not in ("0", "1"):
+            await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
+            return
     
-            action = args[0]
-            try:
-                dialogs = await self.client.get_dialogs()
-                count = 0
-                settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else None)
+        action = args[0]
+        try:
+            dialogs = await self.client.get_dialogs()
+            count = 0
+            settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else None)
     
-                for dialog in dialogs:
-                    entity = dialog.entity
-                    if isinstance(entity, Chat) or (isinstance(entity, Channel) and (getattr(entity, "megagroup", False) or getattr(entity, "gigagroup", False))):
-                        await self.client(UpdateNotifySettingsRequest(
-                            peer=InputNotifyPeer(entity),
-                            settings=settings
-                        ))
-                        count += 1
+            for dialog in dialogs:
+                entity = dialog.entity
+                # Проверяем группы, супергруппы и каналы
+                if (isinstance(entity, Chat) 
+                    or (isinstance(entity, Channel) and (getattr(entity, "megagroup", False) or getattr(entity, "gigagroup", False))) 
+                    or (isinstance(entity, Channel) and not getattr(entity, "megagroup", False) and not getattr(entity, "gigagroup", False))):
+                    
+                    await self.client(UpdateNotifySettingsRequest(
+                        peer=InputNotifyPeer(entity),
+                        settings=settings
+                    ))
+                    count += 1
     
-                status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
-                await message.reply(f"{status} применён к {count} группам и супергруппам")
-            except Exception as e:
-                await message.reply(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
+            status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
+            await message.reply(f"{status} применён к {count} группам, супергруппам и каналам")
+        except Exception as e:
+            await message.reply(f"<b>🚫 NOTIFICATOR ERROR:</b>\n{e}")
                     
         # Глобальный обработчик сообщений для капчи удалён, чтобы капча решалась только в .refcmd и .refk
     
