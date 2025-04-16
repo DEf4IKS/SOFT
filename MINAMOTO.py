@@ -645,7 +645,6 @@ class MinamotoSoftV2(loader.Module):
                     await self.client.delete_dialog(username)
                     result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
                 else:
-                    raise BENGALEXCEPT.bengal_exceptor(e)
         except Exception as e:
             result = f"<b>🚫 UNSUB:</b> {str(e)}"
         finally:
@@ -662,7 +661,6 @@ class MinamotoSoftV2(loader.Module):
                         channel_id = int(chan)
                         link = f"https://t.me/c/{channel_id}"
                     except IndexError:
-                        raise BENGALEXCEPT.InvalidEntity()
                 elif "t.me/+" in target:
                     target_entity = await self.client.get_entity(target)
                     channel_id = target_entity.id
@@ -680,7 +678,6 @@ class MinamotoSoftV2(loader.Module):
                     await self.client.delete_dialog(channel_id)
                     result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
                 else:
-                    raise BENGALEXCEPT.bengal_exceptor(e)
         except Exception as e:
             result = f"<b>🚫 UNSUBSCR:</b> {str(e)}"
         finally:
