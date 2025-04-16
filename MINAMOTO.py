@@ -1,4 +1,4 @@
-__version__ = (1, 0,19 )
+__version__ = (1, 0,20 )
 import os
 import re
 import asyncio
@@ -1416,7 +1416,7 @@ class MinamotoSoftV2(loader.Module):
             mute_until=2**31 - 1 if action == "0" else 0
         )
     
-        dialogs = await self.client.get_dialogs()
+        dialogs = await self.client.get_dialogs(limit=0)
         count = 0
     
         for dialog in dialogs:
