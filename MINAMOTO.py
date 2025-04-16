@@ -540,7 +540,13 @@ class MinamotoSoftV2(loader.Module):
                 error_text = str(e)
                 # Маппинг текста ошибки на короткое сообщение.
                 if "FloodWait" in error_text or "joined too many channels" in error_text:
-                    short_msg = "КОД ОШИБКИ: У ВАС ФЛУДВЕЙТ"
+                    # Попытка извлечь время ожидания из сообщения ошибки.
+                    match = re.search(r'(\d+)\s*seconds', error_text)
+                    if match:
+                        seconds = match.group(1)
+                        short_msg = f"КОД ОШИБКИ: ФЛУДВЕЙТ {seconds} секунд"
+                    else:
+                        short_msg = "КОД ОШИБКИ: ФЛУДВЕЙТ"
                 elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
                     short_msg = "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
                 elif "banned" in error_text.lower():
