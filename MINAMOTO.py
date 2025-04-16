@@ -571,14 +571,16 @@ class MinamotoSoftV2(loader.Module):
           - t.me/+invite_code
           - id или username в «сыром» виде
         """
-        # Если проверка обязательной подписки не нужна – её можно убрать.
-        # await self.ensure_subscription(message)
-    
         await self.apply_delay()
-        urls = await self.extract_valid_urls(utils.get_args_raw(message))
+        args = utils.get_args_raw(message)
+        urls = await self.extract_valid_urls(args)
+        # Если ссылки не найдены через extract_valid_urls, обрабатываем весь переданный аргумент
         if not urls:
-            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
-            return
+            if args.strip():
+                urls = [args.strip()]
+            else:
+                await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+                return
     
         success, failed = 0, 0
         for link in urls:
@@ -591,8 +593,12 @@ class MinamotoSoftV2(loader.Module):
                 # Если ссылка имеет формат приглашения t.me/+invite_code
                 elif "t.me/+" in link:
                     code = link.split("t.me/+")[1]
-                    # Для получения объекта канала/чата используем ImportChatInviteRequest
-                    entity = await self.client(ImportChatInviteRequest(code))
+                    try:
+                        # Пытаемся получить объект через invite-код
+                        entity = await self.client(ImportChatInviteRequest(code))
+                    except hikkatl.errors.rpcerrorlist.UserAlreadyParticipantError:
+                        # Если пользователь уже участник, пробуем получить объект напрямую
+                        entity = await self.client.get_entity(code)
                 # Если ссылка имеет формат t.me/username
                 elif "t.me/" in link:
                     identifier = link.split("t.me/")[1]
@@ -618,6 +624,11 @@ class MinamotoSoftV2(loader.Module):
         res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
                f"Отписка выполнена от: {', '.join(urls)}")
         await self.send_success_to_channel(res)
+    
+    
+    def short_error_message(e, link):
+        """Возвращает короткое строковое описание ошибки."""
+        return str(e)
 
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
