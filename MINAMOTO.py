@@ -1,4 +1,4 @@
-__version__ = (1, 0,13 )
+__version__ = (1, 0,14 )
 import os
 import re
 import asyncio
@@ -206,29 +206,37 @@ class MinamotoSoftV2(loader.Module):
     async def extract_valid_urls(self, text: str) -> list:
         """Извлечение и валидация Telegram-ссылок, @упоминаний и цифровых ID из текста"""
         raw_urls = re.findall(
-            r'(?:https?://)?t\.me/\S+',
+            r'(?:https?://)?t\.me/\S+',  # Ссылки на каналы
             text,
             re.IGNORECASE
         )
+        
         raw_mentions = re.findall(
-            r'(?<!\w)@([a-zA-Z0-9_]{5,32})\b',
+            r'(?<!\w)@([a-zA-Z0-9_]{5,32})\b',  # Упоминания с @
             text
         )
+        
+        # Преобразуем упоминания в URL
         mentions_urls = [f"https://t.me/{mention}" for mention in raw_mentions]
-    
-        # Добавим поддержку числовых ID (например, 1234567890)
-        numeric_ids = re.findall(r'\b\d{6,15}\b', text)  # ID от 6 до 15 цифр
-    
-        # Всё вместе
+        
+        # Числовые ID (например, 2450569271)
+        numeric_ids = re.findall(r'\b\d{6,15}\b', text)  # ID длиной от 6 до 15 цифр
+        
+        # Всё вместе: ссылки, упоминания и ID
         all_entries = raw_urls + mentions_urls + numeric_ids
+        
+        # Очистка найденных значений
         cleaned = []
         for entry in all_entries:
             try:
+                # Попытка очистки ссылки (если это URL)
                 cleaned.append(await self.clean_telegram_url(entry))
             except Exception:
-                cleaned.append(entry)  # если это ID, оставляем как есть
-        return list(filter(None, cleaned))
+                # Если это ID, оставляем как есть
+                cleaned.append(entry)
         
+        return list(filter(None, cleaned))  # Возвращаем только валидные значения
+            
     async def join_with_retry(self, link: str):
         """Умное вступление с повторными попытками"""
         attempts = 0
