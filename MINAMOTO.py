@@ -529,9 +529,8 @@ class MinamotoSoftV2(loader.Module):
             return "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
         else:
             return f"КОД ОШИБКИ: {error_text}"
-        
-        return str(e)    
     
+        return str(e)   
     
     @loader.command()
     async def subcmd(self, message):
