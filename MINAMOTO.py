@@ -572,16 +572,13 @@ class MinamotoSoftV2(loader.Module):
           - t.me/+invite_code
           - id или username в «сыром» виде
         """
+        if not await self.ensure_subscription(message):
+            return
         await self.apply_delay()
-        args = utils.get_args_raw(message)
-        urls = await self.extract_valid_urls(args)
-        # Если ссылки не найдены через extract_valid_urls, обрабатываем весь переданный аргумент
+        urls = await self.extract_valid_urls(utils.get_args_raw(message))
         if not urls:
-            if args.strip():
-                urls = [args.strip()]
-            else:
-                await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
-                return
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+            return
     
         success, failed = 0, 0
         for link in urls:
@@ -594,12 +591,8 @@ class MinamotoSoftV2(loader.Module):
                 # Если ссылка имеет формат приглашения t.me/+invite_code
                 elif "t.me/+" in link:
                     code = link.split("t.me/+")[1]
-                    try:
-                        # Пытаемся получить объект через invite-код
-                        entity = await self.client(ImportChatInviteRequest(code))
-                    except hikkatl.errors.rpcerrorlist.UserAlreadyParticipantError:
-                        # Если пользователь уже участник, пробуем получить объект напрямую
-                        entity = await self.client.get_entity(code)
+                    # Для получения объекта канала/чата нужно использовать ImportChatInviteRequest
+                    entity = await self.client(ImportChatInviteRequest(code))
                 # Если ссылка имеет формат t.me/username
                 elif "t.me/" in link:
                     identifier = link.split("t.me/")[1]
@@ -618,12 +611,10 @@ class MinamotoSoftV2(loader.Module):
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
                 logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                short_msg = short_error_message(e, link)
-                await self.send_error_to_channel(f"Ошибка отписки от {link}: {short_msg}")
+                await self.send_error_to_channel(f"Ошибка отписки от {link}: {e}")
                 failed += 1
     
-        res = (f"Отписка завершена: успешно {success}, не удалось {failed}.\n"
-               f"Отписка выполнена от: {', '.join(urls)}")
+        res = f"Отписка завершена: успешно {success}, не удалось {failed}.\nОтписка выполнена от: {', '.join(urls)}"
         await self.send_success_to_channel(res)
 
     @loader.command()
