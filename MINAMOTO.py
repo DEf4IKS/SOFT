@@ -1,4 +1,4 @@
-__version__ = (1, 0,18 )
+__version__ = (1, 0,19 )
 import os
 import re
 import asyncio
@@ -1410,38 +1410,41 @@ class MinamotoSoftV2(loader.Module):
         if not args or args[0] not in ("0", "1"):
             await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
             return
-
+    
         action = args[0]
-        settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else 0)
-
+        settings = InputPeerNotifySettings(
+            mute_until=2**31 - 1 if action == "0" else 0
+        )
+    
         dialogs = await self.client.get_dialogs()
         count = 0
-        self.logger.info(f"Начало mutecmd action={action}")
-
+    
         for dialog in dialogs:
             entity = dialog.entity
             if not isinstance(entity, (Chat, Channel)):
                 continue
-
-            peer = InputNotifyPeer(dialog.peer)
+    
+            peer = InputNotifyPeer(dialog.input_entity)
             try:
                 await self.client(UpdateNotifySettingsRequest(peer=peer, settings=settings))
                 count += 1
-            except Exception as e:
-                self.logger.error(f"Ошибка при mutecmd для {getattr(dialog, 'name', dialog.peer)}: {e}")
-
+            except Exception:
+                pass
+    
         status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
-        await message.reply(f"{status} применён к {count} группам, супергруппам и каналам")
-        self.logger.info(f"Завершено mutecmd, применено к {count} диалогам")
-
-        # Отправка лога в чат из конфига
+        await message.reply(f"{status} применён к {count} чатам/каналам")
+    
+        text = f"🔔 [MinamotoSoftV2] mutecmd выполнен: action={action}, обработано={count}"
+        # пытаемся отправить в success_log_chat_id
         try:
-            await self.client.send_message(
-                self.config.log_chat_id,
-                f"🔔 [MinamotoSoftV2] Команда mutecmd: action={action}, обработано диалогов: {count}"
-            )
-        except Exception as e:
-            self.logger.error(f"Не удалось отправить лог mutecmd: {e}")
+            await self.client.send_message(self.config.success_log_chat_id, text)
+        except Exception:
+            # если не удалось — логируем ошибку и шлём в log_chat_id
+            try:
+                await self.client.send_message(self.config.log_chat_id, text)
+            except Exception:
+                # если и это не вышло — пропускаем
+                pass
                     
     # Глобальный обработчик сообщений для капчи удалён, чтобы капча решалась только в .refcmd и .refk
 
