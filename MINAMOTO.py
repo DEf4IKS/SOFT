@@ -1,4 +1,4 @@
-__version__ = (1, 0,17 )
+__version__ = (1, 0,18 )
 import os
 import re
 import asyncio
@@ -1410,37 +1410,38 @@ class MinamotoSoftV2(loader.Module):
         if not args or args[0] not in ("0", "1"):
             await message.reply("<b>🚫 Укажите 0 (мут) или 1 (анмут)</b>")
             return
-    
+
         action = args[0]
         settings = InputPeerNotifySettings(mute_until=2**31 - 1 if action == "0" else 0)
-    
+
         dialogs = await self.client.get_dialogs()
         count = 0
-    
+        self.logger.info(f"Начало mutecmd action={action}")
+
         for dialog in dialogs:
             entity = dialog.entity
             if not isinstance(entity, (Chat, Channel)):
                 continue
-    
+
             peer = InputNotifyPeer(dialog.peer)
             try:
                 await self.client(UpdateNotifySettingsRequest(peer=peer, settings=settings))
                 count += 1
-            except Exception:
-                pass
-    
+            except Exception as e:
+                self.logger.error(f"Ошибка при mutecmd для {getattr(dialog, 'name', dialog.peer)}: {e}")
+
         status = "🔇 MUTE" if action == "0" else "🔊 UNMUTE"
         await message.reply(f"{status} применён к {count} группам, супергруппам и каналам")
-    
-        # здесь добавляем отправку лога
+        self.logger.info(f"Завершено mutecmd, применено к {count} диалогам")
+
+        # Отправка лога в чат из конфига
         try:
             await self.client.send_message(
                 self.config.log_chat_id,
                 f"🔔 [MinamotoSoftV2] Команда mutecmd: action={action}, обработано диалогов: {count}"
             )
-        except Exception:
-            # можно игнорировать или залогировать локально
-            pass
+        except Exception as e:
+            self.logger.error(f"Не удалось отправить лог mutecmd: {e}")
                     
     # Глобальный обработчик сообщений для капчи удалён, чтобы капча решалась только в .refcmd и .refk
 
