@@ -1,4 +1,4 @@
-__version__ = (1, 0,14 )
+__version__ = (1, 0,15 )
 import os
 import re
 import asyncio
@@ -580,41 +580,71 @@ class MinamotoSoftV2(loader.Module):
     
     @loader.command()
     async def unsubcmd(self, message):
-        """Отписаться от каналов по ссылкам/ID/приглашениям."""
+        """Отписаться от каналов/чатов по ID, username или ссылкам"""
         if not await self.ensure_subscription(message):
             return
     
-        await self.apply_delay()
         args = utils.get_args_raw(message)
-        urls = await self.extract_valid_urls(args)
-        if not urls:
-            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для отписки.{ERROR_SUFFIX}")
+        if not args:
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Укажите ID каналов через пробел{ERROR_SUFFIX}")
             return
     
-        delay = self.config.get("delay", 1)
-        success, failed, done_message = 0, 0, ""
+        # Получаем список ID/ссылок
+        targets = [t.strip() for t in args.split() if t.strip()]
+        results = {"success": [], "errors": []}
     
-        for i, link in enumerate(urls, start=1):
+        for target in targets:
             try:
-                result = await self.unsubscribe_handler(link)
-                done_message += f"{i}. {result}\n"
-                if "♻️" in result:
-                    success += 1
+                # Пытаемся получить entity разными способами
+                if target.isdigit():
+                    # Прямой ID канала
+                    entity = await self.client.get_entity(int(target))
+                elif target.startswith(("t.me/", "@")):
+                    # Обработка username или ссылки
+                    entity = await self.client.get_entity(target)
                 else:
-                    failed += 1
-                await asyncio.sleep(delay)
+                    results["errors"].append(f"🚫 Некорректный формат: {target}")
+                    continue
+    
+                # Проверяем тип entity
+                if isinstance(entity, (Channel, Chat)):
+                    await self.client(LeaveChannelRequest(entity))
+                    link = f"t.me/{entity.username}" if entity.username else f"ID: {entity.id}"
+                    results["success"].append(f"♻️ Успешная отписка: {link}")
+                else:
+                    results["errors"].append(f"❌ {target} не является каналом/чатом")
+    
+            except (ValueError, TypeError):
+                # Если entity не найден, пробуем отписаться по ID
+                try:
+                    await self.client(LeaveChannelRequest(int(target)))
+                    results["success"].append(f"♻️ Отписан по ID: {target}")
+                except Exception as e:
+                    results["errors"].append(f"🚫 Ошибка отписки от {target}: {str(e)}")
+    
             except Exception as e:
-                failed += 1
-                logger.error(f"Ошибка отписки от {link}: {e}", exc_info=True)
-                await self.send_error_to_channel(f"🚫 Ошибка отписки от {link}: {e}")
+                err_msg = str(e)
+                if "CHANNEL_PRIVATE" in err_msg:
+                    results["errors"].append(f"🔒 Закрытый канал: {target}")
+                elif "USER_NOT_PARTICIPANT" in err_msg:
+                    results["errors"].append(f"👥 Вы не в чате: {target}")
+                else:
+                    results["errors"].append(f"🚫 Ошибка: {target} ({err_msg})")
     
-        result_text = (
-            f"<b>✅ Отписка завершена.</b>\n"
-            f"<b>Успешно:</b> {success}, <b>Не удалось:</b> {failed}\n"
-            f"<b>Ссылки:</b> {', '.join(urls)}"
-        )
+            await asyncio.sleep(self.config["unsubscribe_delay"])
     
-        await self.send_success_to_channel(f"{done_message}\n{result_text}")
+        # Формируем итоговый отчет
+        report = [
+            f"<b>Результат отписки:</b>",
+            f"✅ Успешно: {len(results['success'])}",
+            f"❌ Ошибки: {len(results['errors'])}",
+            "",
+            "<b>Детализация:</b>",
+            *results["success"],
+            *results["errors"]
+        ]
+    
+        await self.send_success_to_channel("\n".join(report))
     
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
