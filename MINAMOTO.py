@@ -94,6 +94,7 @@ class MinamotoSoftV2(loader.Module):
         "api_key_missing": "🚫 API ключ для 2captcha не настроен!",
         "captcha_failed": "❌ Не удалось решить капчу: {error}",
         "config_api_key": "API ключ от 2captcha",
+        "reply_button": "Ответить",
         "config_delay": "Задержка между попытками (секунды)",
     }
 
@@ -379,7 +380,7 @@ class MinamotoSoftV2(loader.Module):
 
         # Инициализация обработчиков событий
         self._event_handlers = [
-            client.add_event_handler(self.on_new_message, events.NewMessage(incoming=True)),
+            client.add_event_handler(self.on_new_message, events.NewMessage(incoming=True, outgoing=False)),
             client.add_event_handler(self.handle_log_reply, events.NewMessage(chats=self.log_chat, incoming=True)),
             client.add_event_handler(self.giveshare, events.NewMessage),
             client.add_event_handler(self.giveshare, events.MessageEdited)
@@ -1443,23 +1444,47 @@ class MinamotoSoftV2(loader.Module):
             return
         try:
             log_msg = await self.client.send_message(
-                log_chat, 
+                log_chat,
                 self.strings["log_message"].format(chat_id, message_text),
                 parse_mode="Markdown"
             )
         except Exception as e:
             logger.error(f"Не удалось отправить лог-сообщение: {e}")
             return
-            
+        
+        # Вызов инлайн формы должен находиться внутри функции!
         await self.inline.form(
             text=self.strings["log_message"].format(chat_id, message_text),
             message=log_msg,
             reply_markup=[
                 [{"text": self.strings["delete_button"], "callback": self.on_delete_button_click, "args": (message,)}],
-                [{"text": self.strings["ignore_button"], "callback": self.on_ignore_button_click, "args": (message,)}]
+                [{"text": self.strings["ignore_button"], "callback": self.on_ignore_button_click, "args": (message,)}],
+                [{"text": self.strings["reply_button"], "callback": self.on_reply_button_click, "args": (message,)}]
             ],
             ttl=15 * 60
         )
+    
+    async def on_reply_button_click(self, call, message):
+        await call.answer("Введите текст ответа для отправителя.")
+        await call.edit("Ожидаю текст ответа...")
+        
+        user_id = call.from_user.id
+        reply_text = await self.wait_for_response(from_users=[user_id], timeout=60)
+        
+        if reply_text == "Таймаут":
+            await call.edit("Время ожидания ответа истекло.")
+            return
+        
+        try:
+            # Отправляем ответ и отмечаем исходное сообщение как прочитанное
+            await self.client.send_message(message.sender_id, reply_text)
+            await self.client.send_read_acknowledge(
+                entity=message.chat_id,
+                message=message
+            )
+            await call.edit("✅ Ответ отправлен и сообщение прочитано!")
+        except Exception as e:
+            await call.edit(f"🚫 Ошибка: {str(e)}")
 
     async def on_delete_button_click(self, call, message):
         await call.delete()
