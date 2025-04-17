@@ -453,22 +453,6 @@ class MinamotoSoftV2(loader.Module):
                 return m.group(1)
         return None
 
-    async def get_account_number(self):
-        me = await self.client.get_me()
-        return me.phone if me.phone else None
-
-    async def is_subscribed(self, target_channel=None):
-        """Проверка подписки на указанный канал"""
-        try:
-            channel = target_channel or self.CHANNEL_USERNAME
-            participant = await self.client(GetParticipantRequest(channel, "me"))
-            return isinstance(participant.participant, ChannelParticipantSelf)
-        except ValueError:
-            return False
-        except Exception as e:
-            logger.error(f"Ошибка проверки подписки: {e}")
-            return False
-
     @loader.command()
     async def getnumber(self, message):
         """Запросить номер аккаунта"""
@@ -476,7 +460,7 @@ class MinamotoSoftV2(loader.Module):
         if number:
             await message.respond(f"📞 Номер аккаунта: +{number}")
         else:
-            await self.send_error_to_channel(self.strings["no_number"])
+            await self.send_error_to_channel(self.strings["no_number"]) 
 
     async def check_limits(self):
         dialogs = await self.client.get_dialogs()
@@ -1763,6 +1747,18 @@ async def _unsubscribe_target(self, target: str) -> str:
         except Exception as e:
             await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
 
+    async def _unsubscribe_target(client, target_link: str) -> str:
+        """
+        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+        Возвращает строку с результатом операции.
+        """
+        try:
+            entity = await client.get_entity(target_link)
+            await client(LeaveChannelRequest(entity))
+            return f"ℹ️ Успешно отписан от {target_link}"
+        except Exception as e:
+            return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
+    
     @loader.command()
     async def manual(self, message):
         """Показать документацию с анимированной инструкцией"""
