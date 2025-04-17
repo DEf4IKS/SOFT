@@ -577,7 +577,7 @@ class MinamotoSoftV2(loader.Module):
     
         res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
-
+    
     @loader.command()
     async def unsubcmd(self, message):
         """.unsub <ссылки/username/ID> — отписаться от каналов или чатов."""
@@ -633,36 +633,44 @@ class MinamotoSoftV2(loader.Module):
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
     async def unsubscribe_handler(self, target):
+        # Обрабатываем только приватные приглашения
+        if 't.me/joinchat/' in target or 't.me/+' in target:
+            invite_hash = target.rstrip('/').split('/')[-1]
+            invite = await self.client(CheckChatInviteRequest(hash=invite_hash))
+    
+            if isinstance(invite, ChatInviteAlready):
+                # Уже в чате — просто уходим
+                await self.client(LeaveChannelRequest(invite.chat))
+                return f"♻️ LEFT: <a href='{target}'>Invite</a>"
+            else:
+                # Не в чате — не подписываемся, возвращаем информативное сообщение
+                return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
+    
+        # Дальше — публичные и ID, как было
+        if target.isdigit() or 't.me/c/' in target:
+            entity = await self.client.get_entity(int(target) if target.isdigit() else target)
+            await self.client(LeaveChannelRequest(entity))
+            return f"♻️ LEFT: <a href='{target}'>Private</a>"
+    
+        if target.startswith('@') or 't.me/' in target:
+            username = target.lstrip('@').split('/')[-1]
+            entity = await self.client.get_entity(username)
+            await self.client(LeaveChannelRequest(entity))
+            return f"♻️ LEFT: <a href='https://t.me/{username}'>Public</a>"
+    
+        return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
+
+    async def is_subscribed(self, target_channel=None):
+        """Проверка подписки на указанный канал"""
         try:
-            # Попытка получения сущности для публичной или приватной ссылки
-            if 't.me/joinchat/' in target or 't.me/+' in target:
-                entity = await self.get_entity_from_link(target)
-                if entity:
-                    await self.client(LeaveChannelRequest(entity))
-                    return f"♻️ LEFT: <a href='{target}'>Invite</a>"
-                else:
-                    return f"🚫 Не удалось получить entity для {target}"
-    
-            # Для числовых ID и приватных ссылок
-            if target.isdigit() or 't.me/c/' in target:
-                try:
-                    entity = await self.get_entity_from_link(target)
-                    await self.client(LeaveChannelRequest(entity))
-                    return f"♻️ LEFT: <a href='{target}'>Private</a>"
-                except Exception as e:
-                    return f"<b>🚫 UNSUB PRIVATE:</b> {str(e)}"
-    
-            # Публичные каналы и юзернеймы
-            if target.startswith('@') or 't.me/' in target:
-                try:
-                    entity = await self.get_entity_from_link(target)
-                    await self.client(LeaveChannelRequest(entity))
-                    return f"♻️ LEFT: <a href='https://t.me/{target.lstrip('@').split('/')[-1]}'>Public</a>"
-                except Exception as e:
-                    return f"<b>🚫 UNSUB PUBLIC:</b> {str(e)}"
-    
+            channel = target_channel or self.CHANNEL_USERNAME
+            participant = await self.client(GetParticipantRequest(channel, "me"))
+            return isinstance(participant.participant, ChannelParticipantSelf)
         except ValueError:
-            return f"🚫 Не удалось найти сущность для {target}"
+            return False
+        except Exception as e:
+            logger.error(f"Ошибка проверки подписки: {e}")
+            return False
 
 #=======================================================================================
     
@@ -1807,6 +1815,20 @@ class MinamotoSoftV2(loader.Module):
             except Exception as e:
                 final_message += f" Но не удалось выйти из чата: {e}"
         await message.edit(final_message)
+
+    async def _unsubscribe_target(client, target_link: str) -> str:
+        """
+        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+        Возвращает строку с результатом операции.
+        """
+        try:
+            # получаем сущность (публичный канал или приватный через invite-ссылку)
+            entity = await client.get_entity(target_link)
+            # запрашиваем выход из канала
+            await client(LeaveChannelRequest(entity))
+            return f"ℹ️ Успешно отписан от {target_link}"
+        except Exception as e:
+            return f"❌ Не удалось отписаться от {target_link}: {e}"
 
     @loader.command()
     async def pupdate(self, message):
