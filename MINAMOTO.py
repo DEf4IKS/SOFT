@@ -1,4 +1,4 @@
-__version__ = (1, 0,28 )
+__version__ = (1, 0,20 )
 import os
 import re
 import asyncio
@@ -1794,10 +1794,10 @@ class MinamotoSoftV2(loader.Module):
         """
         Проверить обновление модуля.
         Сравнивает текущую версию с версией кода из репозитория по адресу:
-        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/DED/MINAMOTO.py
+        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
         Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
-        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/DED/MINAMOTO.py"
+        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(remote_url) as resp:
@@ -1818,6 +1818,57 @@ class MinamotoSoftV2(loader.Module):
                 await message.reply("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
         except Exception as e:
             await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
+
+    @loader.command()
+    async def submcmd(self, message):
+        """Подписаться на каналы и сразу их замутить."""
+        if not await self.ensure_subscription(message):
+            return
+        await self.apply_delay()
+        urls = await self.extract_valid_urls(utils.get_args_raw(message))
+        if not urls:
+            await self.send_error_to_channel(f"{ERROR_PREFIX}Не найдено ссылок для подписки.{ERROR_SUFFIX}")
+            return
+
+        success, failed = 0, 0
+        for link in urls:
+            try:
+                entity = None
+                if "/+" in link:
+                    code = link.split("t.me/+")[1]
+                    result = await self.client(ImportChatInviteRequest(code))
+                    if hasattr(result, 'chats') and result.chats:
+                        entity = result.chats[0]
+                else:
+                    uname = link.split("t.me/")[1]
+                    await self.client(JoinChannelRequest(uname))
+                    entity = await self.client.get_entity(uname)
+                
+                # Применяем мут
+                if entity:
+                    peer = InputNotifyPeer(entity)
+                    settings = InputPeerNotifySettings(mute_until=2**31 - 1)
+                    await self.client(UpdateNotifySettingsRequest(peer=peer, settings=settings))
+                
+                success += 1
+                await asyncio.sleep(self.config["delay"])
+            except Exception as e:
+                error_text = str(e)
+                if "FloodWait" in error_text or "joined too many channels" in error_text:
+                    match = re.search(r'(\d+)\s*seconds', error_text)
+                    short_msg = f"КОД ОШИБКИ: ФЛУДВЕЙТ {match.group(1)} секунд" if match else "КОД ОШИБКИ: ФЛУДВЕЙТ"
+                elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
+                    short_msg = "КОД ОШИБКИ: НЕ НАЙДЕН ЧАТ/КАНАЛ"
+                elif "banned" in error_text.lower():
+                    short_msg = "КОД ОШИБКИ: ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
+                else:
+                    short_msg = f"КОД ОШИБКИ: {error_text}"
+                logger.error(f"Ошибка подписки/мута на {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"Ошибка подписки/мута на {link}: {short_msg}")
+                failed += 1
+
+        res = f"Видеокамера подписка+мут завершены: успешно {success}, не удалось {failed}.\nВыполнено для: {', '.join(urls)}"
+        await self.send_success_to_channel(res)
 
     @loader.command()
     async def manual(self, message):
