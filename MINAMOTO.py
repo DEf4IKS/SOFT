@@ -592,17 +592,6 @@ async def unsubcmd(self, message):
     if errors:
         await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
 
-async def _unsubscribe_target(self, target: str) -> str:
-    """Универсальный метод отписки для разных форматов ссылки."""
-    try:
-        # Приватные приглашения
-        if 't.me/joinchat/' in target or 't.me/+' in target:
-            invite_hash = target.rstrip('/').split('/')[-1]
-            invite = await self.client(CheckChatInviteRequest(hash=invite_hash))
-            if isinstance(invite, ChatInviteAlready):
-                await self.client(LeaveChannelRequest(invite.chat))
-                return f"♻️ LEFT: <a href='{target}'>Invite</a>"
-            return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
 
         # Публичные каналы/чаты (@username или t.me/username)
         if re.match(r'^@?[\w\d_]{5,32}$', target) or ('t.me/' in target and 't.me/c/' not in target):
