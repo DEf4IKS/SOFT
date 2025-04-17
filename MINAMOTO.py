@@ -1,58 +1,46 @@
 __version__ = (1, 0,25 )
 import os
 import re
+import asyncio
+import contextlib
 import sys
-import json
-import time
-import base64
+import psutil
+import aiohttp
 import random
 import logging
-import asyncio
-import psutil
-import contextlib
+import base64
+import json
 import urllib.parse
-import subprocess
+import time
 import requests
-import aiohttp
-import cloudscraper
 import tls_client
-
-from asyncio import sleep
+import subprocess
+import cloudscraper
 from urllib.parse import unquote
-
-from telethon.errors import (
-    InviteHashExpiredError,
-    FloodWaitError,
-    ChatWriteForbiddenError,
-    ChannelPrivateError,
-    UserAlreadyParticipantError,
-)
-
-from telethon.functions.messages import (
-    CheckChatInviteRequest,
-    ImportChatInviteRequest,
-    StartBotRequest,
-    RequestAppWebViewRequest,
-    GetMessagesViewsRequest,
-)
-
-from telethon.functions.channels import (
-    JoinChannelRequest,
-    LeaveChannelRequest,
-    GetParticipantRequest,
-)
-
-from telethon.functions.account import (
+from asyncio import sleep
+from telethon import events, errors, functions, types
+from telethon.errors import InviteHashExpiredError, FloodWaitError, ChatWriteForbiddenError, ChannelPrivateError, UserAlreadyParticipantError
+from telethon.tl import functions as tl_functions
+from telethon.tl.functions.account import (
     UpdateNotifySettingsRequest,
     UpdateProfileRequest,
     UpdateEmojiStatusRequest,
     SetPrivacyRequest,
 )
-
+from telethon.tl.functions.channels import (
+    JoinChannelRequest,
+    LeaveChannelRequest,
+    GetParticipantRequest,
+)
+from telethon.tl.functions.messages import (
+    ImportChatInviteRequest,
+    StartBotRequest,
+    RequestAppWebViewRequest,
+    GetMessagesViewsRequest,
+)
 from telethon.tl.types import (
     Message,
     Channel,
-    Chat,
     PeerUser,
     PeerChannel,
     InputNotifyPeer,
@@ -61,8 +49,9 @@ from telethon.tl.types import (
     KeyboardButtonUrl,
     InputBotAppShortName,
     ChannelParticipantSelf,
-    ChatInviteAlready,
+    Chat
 )
+from telethon.tl.functions.photos import UploadProfilePhotoRequest
 
 from hikka import loader, utils
 logger = logging.getLogger(__name__)
