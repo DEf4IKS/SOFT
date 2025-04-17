@@ -1,4 +1,4 @@
-__version__ = (1, 0,21 )
+__version__ = (1, 0,22 )
 import os
 import re
 import asyncio
@@ -580,71 +580,65 @@ class MinamotoSoftV2(loader.Module):
     
     @loader.command()
     async def unsubcmd(self, message):
-        """Отписаться от каналов/чатов по ID, username или ссылкам"""
+        """.unsub <ссылки/username/ID> — отписаться от каналов или чатов."""
         if not await self.ensure_subscription(message):
             return
     
         args = utils.get_args_raw(message)
         if not args:
-            await self.send_error_to_channel(f"{ERROR_PREFIX}Укажите ID каналов через пробел{ERROR_SUFFIX}")
-            return
+            return await message.edit("❌ Укажите ссылки, @username или ID каналов для отписки.")
     
-        # Получаем список ID/ссылок
-        targets = [t.strip() for t in args.split() if t.strip()]
-        results = {"success": [], "errors": []}
+        # Находим разные типы целей
+        invite_links = re.findall(r'(?:https?://)?t\.me/\+[\w_-]+', args)
+        normal_links = re.findall(r'(?:https?://)?t\.me/[A-Za-z0-9_]+', args)
+        mentions     = re.findall(r'@[\w_]+', args)
+        ids          = re.findall(r'\b\d+\b', args)
     
-        for target in targets:
+        targets = []
+        for link in normal_links:
+            if not link.startswith('http'):
+                link = 'https://' + link
+            targets.append(('normal', link))
+        for link in invite_links:
+            if not link.startswith('http'):
+                link = 'https://' + link
+            targets.append(('invite', link))
+        targets += [('mention', m) for m in mentions] + [('id', i) for i in ids]
+    
+        success = []
+        errors  = []
+    
+        for kind, target in targets:
             try:
-                # Пытаемся получить entity разными способами
-                if target.isdigit():
-                    # Прямой ID канала
-                    entity = await self.client.get_entity(int(target))
-                elif target.startswith(("t.me/", "@")):
-                    # Обработка username или ссылки
-                    entity = await self.client.get_entity(target)
+                if kind == 'invite':
+                    hash_ = target.rsplit('/', 1)[-1].lstrip('+')
+                    updates = await self.client(functions.messages.ImportChatInviteRequest(hash=hash_))
+                    entity  = updates.chats[0]
+                    await self.client(functions.channels.LeaveChannelRequest(channel=entity))
                 else:
-                    results["errors"].append(f"🚫 Некорректный формат: {target}")
-                    continue
+                    entity = await utils.get_entity(target)
+                    await self.client(functions.channels.LeaveChannelRequest(channel=entity))
     
-                # Проверяем тип entity
-                if isinstance(entity, (Channel, Chat)):
-                    await self.client(LeaveChannelRequest(entity))
-                    link = f"t.me/{entity.username}" if entity.username else f"ID: {entity.id}"
-                    results["success"].append(f"♻️ Успешная отписка: {link}")
-                else:
-                    results["errors"].append(f"❌ {target} не является каналом/чатом")
-    
-            except (ValueError, TypeError):
-                # Если entity не найден, пробуем отписаться по ID
-                try:
-                    await self.client(LeaveChannelRequest(int(target)))
-                    results["success"].append(f"♻️ Отписан по ID: {target}")
-                except Exception as e:
-                    results["errors"].append(f"🚫 Ошибка отписки от {target}: {str(e)}")
-    
+                success.append(target)
             except Exception as e:
-                err_msg = str(e)
-                if "CHANNEL_PRIVATE" in err_msg:
-                    results["errors"].append(f"🔒 Закрытый канал: {target}")
-                elif "USER_NOT_PARTICIPANT" in err_msg:
-                    results["errors"].append(f"👥 Вы не в чате: {target}")
-                else:
-                    results["errors"].append(f"🚫 Ошибка: {target} ({err_msg})")
+                errors.append(f"{target}: {e.__class__.__name__}")
     
-            await asyncio.sleep(self.config["unsubscribe_delay"])
+        # локальный отчёт для пользователя в чате
+        report_lines = []
+        if success:
+            report_lines.append(f"✅ Отписались от: {', '.join(success)}")
+        if errors:
+            report_lines.append(f"❌ Ошибки при отписке: {', '.join(errors)}")
+        await message.edit("\n".join(report_lines) or "❌ Нечего отписывать.")
     
-        # Формируем итоговый отчет
-        report = [
-            f"<b>Результат отписки:</b>",
-            f"✅ Успешно: {len(results['success'])}",
-            f"❌ Ошибки: {len(results['errors'])}",
-            "",
-            "<b>Детализация:</b>",
-            *results["success"],
-            *results["errors"]
-        ]
+        # отчёт в лог‑канал(ы)
+        if success:
+            success_log = "✅ Успешные отписки:\n" + "\n".join(success)
+            await self.send_success_to_channel(success_log)
     
-        await self.send_success_to_channel("\n".join(report))
+        if errors:
+            error_log = "❌ Ошибки при отписке:\n" + "\n".join(errors)
+            await self.send_error_to_channel(error_log)
     
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
