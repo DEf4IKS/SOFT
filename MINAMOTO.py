@@ -606,7 +606,7 @@ class MinamotoSoftV2(loader.Module):
 
                 results.append(res)
 
-                if res.startswith("♻️") or res.startswith("ℹ️"):
+                if res.startswith("⛩") or res.startswith("ℹ️"):
                     success.append(res)
                 else:
                     errors.append(res)
@@ -631,7 +631,7 @@ class MinamotoSoftV2(loader.Module):
         if isinstance(invite, ChatInviteAlready):
             # Уже в чате — уходим
             await self.client(LeaveChannelRequest(invite.chat))
-            return f"♻️ LEFT: <a href='{target}'>Invite</a>"
+            return f"⛩ LEFT: <a href='{target}'>Invite</a>"
         else:
             return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
 
@@ -648,14 +648,14 @@ class MinamotoSoftV2(loader.Module):
 
             await self.client.get_entity(username)
             await self.client(LeaveChannelRequest(username))
-            # эмоджи перед тегом, чтобы строка начиналась с "♻️"
-            result = f"♻️ <b>UNSUBSCRIBE: <a href='{link}'>PUBLIC.</a></b>"
+            # эмоджи перед тегом, чтобы строка начиналась с "⛩"
+            result = f"⛩ <b>UNSUBSCRIBE: <a href='{link}'>PUBLIC.</a></b>"
 
         except Exception as e:
             if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
                "Cannot cast InputPeerChat" in str(e):
                 await self.client.delete_dialog(username)
-                result = f"♻️ <b>UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
+                result = f"⛩ <b>UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
             else:
                 result = f"🚫 UNSUB: {e}"
         return result
@@ -677,13 +677,13 @@ class MinamotoSoftV2(loader.Module):
                 link = target
 
             await self.client(LeaveChannelRequest(channel_id))
-            result = f"♻️ <b>UNSUBSCRIBE: <a href='{link}'>PRIVATE.</a></b>"
+            result = f"⛩ <b>UNSUBSCRIBE: <a href='{link}'>PRIVATE.</a></b>"
 
         except Exception as e:
             if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
                "Cannot cast InputPeerChat" in str(e):
                 await self.client.delete_dialog(channel_id)
-                result = f"♻️ <b>UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
+                result = f"⛩ <b>UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
             else:
                 result = f"🚫 UNSUBSCR: {e}"
         return result
