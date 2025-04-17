@@ -588,27 +588,31 @@ class MinamotoSoftV2(loader.Module):
         if not args:
             return await message.edit("❌ Укажите ссылки, @username или ID каналов для отписки.")
     
-        parts   = args.split()
+        # 1. Собираем все «сырые» цели из аргументов
+        #    — ссылки вида t.me/joinchat/… или t.me/+…
+        #    — публичные t.me/slug или @username
+        #    — идентификаторы (ID или c/…)
+        parts = args.split()
         results = []
         success = []
-        errors  = []
+        errors = []
     
         for target in parts:
             try:
-                # выбираем метод по формату
+                # 2. Выбираем, какой метод использовать
                 if 't.me/joinchat/' in target or 't.me/+' in target:
                     res = await self.unsubscribe_handler(target)
-                elif target.isdigit() or 't.me/c/' in target:
-                    res = await self.unsubscribe_id(target)
                 elif target.startswith('@') or 't.me/' in target:
                     res = await self.unsubscribe_public(target)
+                elif target.isdigit() or 't.me/c/' in target:
+                    res = await self.unsubscribe_id(target)
                 else:
-                    res = f"🚫 Неподдерживаемый формат ссылки: {target}"
+                    res = f"<b>🚫 Неподдерживаемый формат ссылки:</b> {target}"
     
                 results.append(res)
     
-                # классифицируем по наличию эмоджи успеха/инфо
-                if "♻️" in res or "ℹ️" in res:
+                # 3. По префиксу решаем, в списки успеха или ошибок
+                if res.startswith(("♻️", "ℹ️")):
                     success.append(res)
                 else:
                     errors.append(res)
@@ -618,18 +622,14 @@ class MinamotoSoftV2(loader.Module):
                 results.append(err)
                 errors.append(err)
     
-        # 1) в чат юзеру
+        # 4. Отправляем единый отчёт в чат
         await message.edit("\n".join(results))
     
-        # 2) в логи
+        # 5. Логи
         if success:
-            await self.send_success_to_channel(
-                "✅ Успешные отписки:\n" + "\n".join(success)
-            )
+            await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
         if errors:
-            await self.send_error_to_channel(
-                "❌ Ошибки при отписке:\n" + "\n".join(errors)
-            )
+            await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
     async def unsubscribe_handler(self, target):
