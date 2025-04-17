@@ -466,6 +466,18 @@ class MinamotoSoftV2(loader.Module):
         me = await self.client.get_me()
         return me.phone if me.phone else None
 
+    async def is_subscribed(self, target_channel=None):
+    """Проверка подписки на указанный канал"""
+    try:
+        channel = target_channel or self.CHANNEL_USERNAME
+        participant = await self.client(GetParticipantRequest(channel, "me"))
+        return isinstance(participant.participant, ChannelParticipantSelf)
+    except ValueError:
+        return False
+    except Exception as e:
+        logger.error(f"Ошибка проверки подписки: {e}")
+        return False
+
     @loader.command()
     async def getnumber(self, message):
         """Запросить номер аккаунта"""
