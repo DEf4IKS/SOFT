@@ -193,6 +193,18 @@ class MinamotoSoftV2(loader.Module):
         self.api_url = "https://2captcha.com"
         self._handler = None
 
+    async def _unsubscribe_target(client, target_link: str) -> str:
+        """
+        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+        Возвращает строку с результатом операции.
+        """
+        try:
+            entity = await client.get_entity(target_link)
+            await client(LeaveChannelRequest(entity))
+            return f"ℹ️ Успешно отписан от {target_link}"
+        except Exception as e:
+            return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
+    
     async def clean_telegram_url(self, url: str) -> str:
         """Очистка URL от HTML-мусора и извлечение валидного пути"""
         clean_url = re.sub(r'[\s<>"\'&>].*', '', url)
@@ -618,18 +630,6 @@ async def unsubcmd(self, message):
     except Exception as e:
         # Универсальная ошибка
         return f"🚫 Ошибка при обработке {target}: {type(e).__name__}"
-
-async def _unsubscribe_target(client, target_link: str) -> str:
-    """
-    Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
-    Возвращает строку с результатом операции.
-    """
-    try:
-        entity = await client.get_entity(target_link)
-        await client(LeaveChannelRequest(entity))
-        return f"ℹ️ Успешно отписан от {target_link}"
-    except Exception as e:
-        return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
 
     @loader.command()
     async def run(self, message):
