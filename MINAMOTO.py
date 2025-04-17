@@ -649,32 +649,36 @@ class MinamotoSoftV2(loader.Module):
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
     async def unsubscribe_handler(self, target):
-        if 't.me/joinchat/' in target or 't.me/+' in target:
-            entity = await self.get_entity_from_link(target)
-            if entity:
-                await self.client(LeaveChannelRequest(entity))
-                return f"♻️ LEFT: <a href='{target}'>Invite</a>"
-            else:
-                return f"🚫 Не удалось получить entity для {target}"
-
-        # Для числовых ID и приватных ссылок
-        if target.isdigit() or 't.me/c/' in target:
-            try:
+        try:
+            # Попытка получения сущности для публичной или приватной ссылки
+            if 't.me/joinchat/' in target or 't.me/+' in target:
                 entity = await self.get_entity_from_link(target)
-                await self.client(LeaveChannelRequest(entity))
-                return f"♻️ LEFT: <a href='{target}'>Private</a>"
-            except Exception as e:
-                return f"<b>🚫 UNSUB PRIVATE:</b> {str(e)}"
-
-        if target.startswith('@') or 't.me/' in target:
-            try:
-                entity = await self.get_entity_from_link(target)
-                await self.client(LeaveChannelRequest(entity))
-                return f"♻️ LEFT: <a href='https://t.me/{target.lstrip('@').split('/')[-1]}'>Public</a>"
-            except Exception as e:
-                return f"<b>🚫 UNSUB PUBLIC:</b> {str(e)}"
-
-        return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
+                if entity:
+                    await self.client(LeaveChannelRequest(entity))
+                    return f"♻️ LEFT: <a href='{target}'>Invite</a>"
+                else:
+                    return f"🚫 Не удалось получить entity для {target}"
+    
+            # Для числовых ID и приватных ссылок
+            if target.isdigit() or 't.me/c/' in target:
+                try:
+                    entity = await self.get_entity_from_link(target)
+                    await self.client(LeaveChannelRequest(entity))
+                    return f"♻️ LEFT: <a href='{target}'>Private</a>"
+                except Exception as e:
+                    return f"<b>🚫 UNSUB PRIVATE:</b> {str(e)}"
+    
+            # Публичные каналы и юзернеймы
+            if target.startswith('@') or 't.me/' in target:
+                try:
+                    entity = await self.get_entity_from_link(target)
+                    await self.client(LeaveChannelRequest(entity))
+                    return f"♻️ LEFT: <a href='https://t.me/{target.lstrip('@').split('/')[-1]}'>Public</a>"
+                except Exception as e:
+                    return f"<b>🚫 UNSUB PUBLIC:</b> {str(e)}"
+    
+        except ValueError:
+            return f"🚫 Не удалось найти сущность для {target}"
 
 #=======================================================================================
     
