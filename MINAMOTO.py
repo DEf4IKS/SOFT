@@ -122,13 +122,13 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "log_chat_id", 
-                4702400000, 
+                2586278103, 
                 "ID чата для логирования ошибок в командах", 
                 validator=loader.validators.Integer()
             ),
             loader.ConfigValue(
                 "success_log_chat_id", 
-                4702400000, 
+                2586278103, 
                 "ID чата для логирования успешных запусков команд", 
                 validator=loader.validators.Integer()
             ),
