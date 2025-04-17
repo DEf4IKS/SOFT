@@ -478,7 +478,6 @@ class MinamotoSoftV2(loader.Module):
             logger.error(f"Ошибка проверки подписки: {e}")
             return False
 
-
     @loader.command()
     async def getnumber(self, message):
         """Запросить номер аккаунта"""
