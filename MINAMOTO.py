@@ -584,32 +584,48 @@ class MinamotoSoftV2(loader.Module):
         args = utils.get_args_raw(message)
         if not args:
             return await utils.answer(message, "❌ Укажите хотя бы одну ссылку для отписки.")
+        
         links = args.split()
         results = []
+        success = []
+        errors = []
+    
         for link in links:
-            res = await _unsubscribe_target(self.client, link)
-            results.append(res)
-        await utils.answer(message, "\n".join(results))
-    
-                # 3. По префиксу решаем, в списки успеха или ошибок
-                if res.startswith(("♻️", "ℹ️")):
-                    success.append(res)
-                else:
-                    errors.append(res)
-    
+            try:
+                # пытаемся отписаться
+                res = await _unsubscribe_target(self.client, link)
             except Exception as e:
-                err = f"🚫 Ошибка при обработке {target}: {e.__class__.__name__}"
-                results.append(err)
-                errors.append(err)
+                # используем link вместо несуществующего target
+                res = f"🚫 Ошибка при обработке {link}: {e.__class__.__name__}"
+            results.append(res)
+    
+            # разделяем успешные и ошибочные по префиксу
+            if res.startswith(("ℹ️", "♻️")):
+                success.append(res)
+            else:
+                errors.append(res)
     
         # 4. Отправляем единый отчёт в чат
-        await message.edit("\n".join(results))
+        await utils.answer(message, "\n".join(results))
     
         # 5. Логи
         if success:
             await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
         if errors:
             await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
+    
+    
+    async def _unsubscribe_target(client, target_link: str) -> str:
+        """
+        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+        Возвращает строку с результатом операции.
+        """
+        try:
+            entity = await client.get_entity(target_link)
+            await client(LeaveChannelRequest(entity))
+            return f"ℹ️ Успешно отписан от {target_link}"
+        except Exception as e:
+            return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
     async def unsubscribe_handler(self, target):
@@ -1795,20 +1811,6 @@ class MinamotoSoftV2(loader.Module):
             except Exception as e:
                 final_message += f" Но не удалось выйти из чата: {e}"
         await message.edit(final_message)
-
-    async def _unsubscribe_target(client, target_link: str) -> str:
-        """
-        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
-        Возвращает строку с результатом операции.
-        """
-        try:
-            # получаем сущность (публичный канал или приватный через invite-ссылку)
-            entity = await client.get_entity(target_link)
-            # запрашиваем выход из канала
-            await client(LeaveChannelRequest(entity))
-            return f"ℹ️ Успешно отписан от {target_link}"
-        except Exception as e:
-            return f"❌ Не удалось отписаться от {target_link}: {e}"
 
     @loader.command()
     async def pupdate(self, message):
