@@ -583,23 +583,18 @@ class MinamotoSoftV2(loader.Module):
         """.unsub <ссылки/username/ID> — отписаться от каналов или чатов."""
         if not await self.ensure_subscription(message):
             return
-    
+
         args = utils.get_args_raw(message)
         if not args:
             return await message.edit("❌ Укажите ссылки, @username или ID каналов для отписки.")
-    
-        # 1. Собираем все «сырые» цели из аргументов
-        #    — ссылки вида t.me/joinchat/… или t.me/+…
-        #    — публичные t.me/slug или @username
-        #    — идентификаторы (ID или c/…)
+
         parts = args.split()
         results = []
         success = []
         errors = []
-    
+
         for target in parts:
             try:
-                # 2. Выбираем, какой метод использовать
                 if 't.me/joinchat/' in target or 't.me/+' in target:
                     res = await self.unsubscribe_handler(target)
                 elif target.startswith('@') or 't.me/' in target:
@@ -608,58 +603,92 @@ class MinamotoSoftV2(loader.Module):
                     res = await self.unsubscribe_id(target)
                 else:
                     res = f"<b>🚫 Неподдерживаемый формат ссылки:</b> {target}"
-    
+
                 results.append(res)
-    
-                # 3. По префиксу решаем, в списки успеха или ошибок
-                if res.startswith(("♻️", "ℹ️")):
+
+                if res.startswith("♻️") or res.startswith("ℹ️"):
                     success.append(res)
                 else:
                     errors.append(res)
-    
+
             except Exception as e:
                 err = f"🚫 Ошибка при обработке {target}: {e.__class__.__name__}"
                 results.append(err)
                 errors.append(err)
-    
-        # 4. Отправляем единый отчёт в чат
+
         await message.edit("\n".join(results))
-    
-        # 5. Логи
+
         if success:
             await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
         if errors:
             await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
-    # ============================ ОБРАБОТЧИК ССЫЛОК =============================
-    
-    async def unsubscribe_handler(self, target):
-        # Обрабатываем только приватные приглашения
-        if 't.me/joinchat/' in target or 't.me/+' in target:
-            invite_hash = target.rstrip('/').split('/')[-1]
-            invite = await self.client(CheckChatInviteRequest(hash=invite_hash))
-    
-            if isinstance(invite, ChatInviteAlready):
-                # Уже в чате — просто уходим
-                await self.client(LeaveChannelRequest(invite.chat))
-                return f"♻️ LEFT: <a href='{target}'>Invite</a>"
-            else:
-                # Не в чате — не подписываемся, возвращаем информативное сообщение
-                return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
-    
-        # Дальше — публичные и ID, как было
-        if target.isdigit() or 't.me/c/' in target:
-            entity = await self.client.get_entity(int(target) if target.isdigit() else target)
-            await self.client(LeaveChannelRequest(entity))
-            return f"♻️ LEFT: <a href='{target}'>Private</a>"
-    
-        if target.startswith('@') or 't.me/' in target:
-            username = target.lstrip('@').split('/')[-1]
-            entity = await self.client.get_entity(username)
-            await self.client(LeaveChannelRequest(entity))
-            return f"♻️ LEFT: <a href='https://t.me/{username}'>Public</a>"
-    
-        return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
 
+    # ============================ ОБРАБОТЧИК ПРИВАТНЫХ ССЫЛОК =============================
+    async def unsubscribe_handler(self, target):
+        invite_hash = target.rstrip('/').split('/')[-1]
+        invite = await self.client(CheckChatInviteRequest(hash=invite_hash))
+
+        if isinstance(invite, ChatInviteAlready):
+            # Уже в чате — уходим
+            await self.client(LeaveChannelRequest(invite.chat))
+            return f"♻️ LEFT: <a href='{target}'>Invite</a>"
+        else:
+            return f"ℹ️ Вы не состоите в <a href='{target}'>этом чате</a>."
+
+    # ============================ ОБРАБОТЧИК ПУБЛИЧНЫХ ССЫЛОК =============================
+    async def unsubscribe_public(self, target):
+        try:
+            if target.startswith("@"):
+                username = target[1:]
+                link = f"https://t.me/{username}"
+            else:
+                chan = target.split("t.me/")[1].split("/")[0]
+                username = chan
+                link = f"https://t.me/{username}"
+
+            await self.client.get_entity(username)
+            await self.client(LeaveChannelRequest(username))
+            # эмоджи перед тегом, чтобы строка начиналась с "♻️"
+            result = f"♻️ <b>UNSUBSCRIBE: <a href='{link}'>PUBLIC.</a></b>"
+
+        except Exception as e:
+            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
+               "Cannot cast InputPeerChat" in str(e):
+                await self.client.delete_dialog(username)
+                result = f"♻️ <b>UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
+            else:
+                result = f"🚫 UNSUB: {e}"
+        return result
+
+    # ============================ ОБРАБОТЧИК ПО ID =============================
+    async def unsubscribe_id(self, target):
+        try:
+            if "t.me/c/" in target:
+                chan = target.split("t.me/c/")[1].split("/")[0]
+                channel_id = int(chan)
+                link = f"https://t.me/c/{channel_id}"
+            elif target.isdigit():
+                channel_id = int(target)
+                link = f"https://t.me/c/{channel_id}"
+            else:
+                # на всякий случай
+                entity = await self.client.get_entity(target)
+                channel_id = entity.id
+                link = target
+
+            await self.client(LeaveChannelRequest(channel_id))
+            result = f"♻️ <b>UNSUBSCRIBE: <a href='{link}'>PRIVATE.</a></b>"
+
+        except Exception as e:
+            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
+               "Cannot cast InputPeerChat" in str(e):
+                await self.client.delete_dialog(channel_id)
+                result = f"♻️ <b>UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
+            else:
+                result = f"🚫 UNSUBSCR: {e}"
+        return result
+
+    # ============================ ПРОВЕРКА ПОДПИСКИ =============================
     async def is_subscribed(self, target_channel=None):
         """Проверка подписки на указанный канал"""
         try:
@@ -671,63 +700,6 @@ class MinamotoSoftV2(loader.Module):
         except Exception as e:
             logger.error(f"Ошибка проверки подписки: {e}")
             return False
-
-#=======================================================================================
-    
-    async def unsubscribe_public(self, target):
-        try:
-            if target.startswith("@"):
-                username = target[1:]
-                link = f"https://t.me/{username}"
-            elif "t.me/" in target:
-                chan = target.split("t.me/")[1].split("/")[0]
-                link = f"https://t.me/{chan}"
-                username = chan
-            else:
-                raise Exception("Invalid username")
-    
-            await self.client.get_entity(username)
-            await self.client(LeaveChannelRequest(username))
-            result = f"<b>♻️ UNSUBSCRIBE: <a href='{link}'>PUBLIC.</a></b>"
-    
-        except Exception as e:
-            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
-               "Cannot cast InputPeerChat" in str(e):
-                await self.client.delete_dialog(username)
-                result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PUBLIC PM</a></b>"
-            else:
-                result = f"<b>🚫 UNSUB:</b> {str(e)}"
-        return result
-    
-    #=======================================================================================
-    
-    async def unsubscribe_id(self, target):
-        try:
-            if "t.me/c/" in target:
-                chan = target.split("t.me/c/")[1].split("/")[0]
-                channel_id = int(chan)
-                link = f"https://t.me/c/{channel_id}"
-            elif "t.me/+" in target:
-                target_entity = await self.client.get_entity(target)
-                channel_id = target_entity.id
-                link = f"https://t.me/c/{channel_id}"
-            elif target.isdigit():
-                channel_id = int(target)
-                link = f"https://t.me/c/{channel_id}"
-            else:
-                raise Exception("Invalid username")
-    
-            await self.client(LeaveChannelRequest(channel_id))
-            result = f"<b>♻️ UNSUBSCRIBE: <a href='{link}'>PRIVATE.</a></b>"
-    
-        except Exception as e:
-            if "Cannot cast InputPeerUser to any kind of InputChannel" in str(e) or \
-               "Cannot cast InputPeerChat" in str(e):
-                await self.client.delete_dialog(channel_id)
-                result = f"<b>♻️ UNSUBSCR: <a href='{link}'>PRIVATE PM</a></b>"
-            else:
-                result = f"<b>🚫 UNSUBSCR:</b> {str(e)}"
-        return result
 
     @loader.command()
     async def run(self, message):
