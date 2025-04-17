@@ -1,4 +1,4 @@
-__version__ = (1, 0,23 )
+__version__ = (1, 0,24 )
 import os
 import re
 import asyncio
@@ -588,69 +588,48 @@ class MinamotoSoftV2(loader.Module):
         if not args:
             return await message.edit("❌ Укажите ссылки, @username или ID каналов для отписки.")
     
-        # Парсим цели
-        invite_links = re.findall(r'(?:https?://)?t\.me/\+[\w_-]+', args)
-        normal_links = re.findall(r'(?:https?://)?t\.me/[A-Za-z0-9_]+', args)
-        mentions     = re.findall(r'@[\w_]+', args)
-        ids          = re.findall(r'\b\d+\b', args)
-    
-        targets = []
-        for link in normal_links:
-            url = link if link.startswith('http') else f'https://{link}'
-            targets.append(('normal', url))
-        for link in invite_links:
-            url = link if link.startswith('http') else f'https://{link}'
-            targets.append(('invite', url))
-        targets += [('mention', m) for m in mentions] + [('id', i) for i in ids]
-    
+        # 1. Собираем все «сырые» цели из аргументов
+        #    — ссылки вида t.me/joinchat/… или t.me/+…
+        #    — публичные t.me/slug или @username
+        #    — идентификаторы (ID или c/…)
+        parts = args.split()
+        results = []
         success = []
-        errors  = []
+        errors = []
     
-        for kind, target in targets:
+        for target in parts:
             try:
-                # Получаем entity
-                if kind == 'invite':
-                    hash_ = target.rsplit('/', 1)[-1].lstrip('+')
-                    try:
-                        upd = await self.client(functions.messages.ImportChatInviteRequest(hash=hash_))
-                        entity = upd.chats[0]
-                    except TypeError:
-                        # уже в чате или ссылка неверна — пробуем через get_entity
-                        entity = await utils.get_entity(target)
+                # 2. Выбираем, какой метод использовать
+                if 't.me/joinchat/' in target or 't.me/+' in target:
+                    res = await self.unsubscribe_handler(target)
+                elif target.startswith('@') or 't.me/' in target:
+                    res = await self.unsubscribe_public(target)
+                elif target.isdigit() or 't.me/c/' in target:
+                    res = await self.unsubscribe_id(target)
                 else:
-                    entity = await utils.get_entity(target)
+                    res = f"<b>🚫 Неподдерживаемый формат ссылки:</b> {target}"
     
-                # В зависимости от типа — уходим по‑разному
-                if isinstance(entity, types.Channel):
-                    await self.client(functions.channels.LeaveChannelRequest(channel=entity))
-                elif isinstance(entity, types.Chat):
-                    await self.client(functions.messages.LeaveChatRequest(chat_id=entity.id))
+                results.append(res)
+    
+                # 3. По префиксу решаем, в списки успеха или ошибок
+                if res.startswith(("♻️", "ℹ️")):
+                    success.append(res)
                 else:
-                    # на всякий случай
-                    await self.client(functions.channels.LeaveChannelRequest(channel=entity))
-    
-                success.append(target)
+                    errors.append(res)
     
             except Exception as e:
-                errors.append(f"{target}: {e.__class__.__name__}")
+                err = f"🚫 Ошибка при обработке {target}: {e.__class__.__name__}"
+                results.append(err)
+                errors.append(err)
     
-        # Отчёт для юзера
-        report = []
-        if success:
-            report.append(f"✅ Отписались от: {', '.join(success)}")
-        if errors:
-            report.append(f"❌ Ошибки при отписке: {', '.join(errors)}")
-        await message.edit("\n".join(report) or "❌ Нечего отписывать.")
+        # 4. Отправляем единый отчёт в чат
+        await message.edit("\n".join(results))
     
-        # Отчёт в логи
+        # 5. Логи
         if success:
-            await self.send_success_to_channel(
-                "✅ Успешные отписки:\n" + "\n".join(success)
-            )
+            await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
         if errors:
-            await self.send_error_to_channel(
-                "❌ Ошибки при отписке:\n" + "\n".join(errors)
-            )
+            await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
     
     # ============================ ОБРАБОТЧИК ССЫЛОК =============================
     
