@@ -619,6 +619,19 @@ async def unsubcmd(self, message):
         # Универсальная ошибка
         return f"🚫 Ошибка при обработке {target}: {type(e).__name__}"
 
+
+async def _unsubscribe_target(client, target_link: str) -> str:
+    """
+    Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+    Возвращает строку с результатом операции.
+    """
+    try:
+        entity = await client.get_entity(target_link)
+        await client(LeaveChannelRequest(entity))
+        return f"ℹ️ Успешно отписан от {target_link}"
+    except Exception as e:
+        return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
+
     @loader.command()
     async def run(self, message):
         """Выполнить действия из сообщения с логированием"""
@@ -1734,19 +1747,7 @@ async def unsubcmd(self, message):
             else:
                 await message.reply("<b>Модуль обновлён. Новых версий не обнаружено.</b>")
         except Exception as e:
-            await message.reply(f"<b>Ошибка при обновлении: {e}</b>")
-
-    async def _unsubscribe_target(client, target_link: str) -> str:
-        """
-        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
-        Возвращает строку с результатом операции.
-        """
-        try:
-            entity = await client.get_entity(target_link)
-            await client(LeaveChannelRequest(entity))
-            return f"ℹ️ Успешно отписан от {target_link}"
-        except Exception as e:
-            return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
+            await message.reply(f"<b>Ошибка при обновлении: {e}</b>"
     
     @loader.command()
     async def manual(self, message):
