@@ -547,8 +547,8 @@ class MinamotoSoftV2(loader.Module):
         await self.send_logger_message(final_text)
     
     @loader.command()
-    async def subcmd(self, message):
-        """Подписаться на каналы."""
+    async def submcmd(self, message):
+        """Подписаться на каналы и сразу их замутить."""
         if not await self.ensure_subscription(message):
             return
         await self.apply_delay()
@@ -560,36 +560,43 @@ class MinamotoSoftV2(loader.Module):
         success, failed = 0, 0
         for link in urls:
             try:
+                entity = None
                 if "/+" in link:
                     code = link.split("t.me/+")[1]
-                    await self.client(ImportChatInviteRequest(code))
+                    result = await self.client(ImportChatInviteRequest(code))
+                    if hasattr(result, 'chats') and result.chats:
+                        entity = result.chats[0]
                 else:
                     uname = link.split("t.me/")[1]
                     await self.client(JoinChannelRequest(uname))
+                    entity = await self.client.get_entity(uname)
+                
+                # Применяем мут
+                if entity:
+                    peer = InputNotifyPeer(entity)
+                    settings = InputPeerNotifySettings(mute_until=2**31 - 1)
+                    await self.client(UpdateNotifySettingsRequest(peer=peer, settings=settings))
+                
                 success += 1
                 await asyncio.sleep(self.config["delay"])
             except Exception as e:
                 error_text = str(e)
-                # Маппинг текста ошибки на короткое сообщение.
-                if "FloodWait" in error_text or "joined too many channels" in error_text:
-                    # Попытка извлечь время ожидания из сообщения ошибки.
+                # Расширяем маппинг ошибок
+                if "FloodWait" in error_text or "joined too many channels" in error_text or "wait of" in error_text.lower():
                     match = re.search(r'(\d+)\s*seconds', error_text)
-                    if match:
-                        seconds = match.group(1)
-                        short_msg = f"КОД ОШИБКИ: ФЛУДВЕЙТ {seconds} секунд"
-                    else:
-                        short_msg = "КОД ОШИБКИ: ФЛУДВЕЙТ"
+                    short_msg = f"КОД ОШИБКИ: ФЛУДВЕЙТ {match.group(1)} секунд" if match else "КОД ОШИБКИ: ФЛУДВЕЙТ"
                 elif "invalid" in error_text.lower() or "can't do that" in error_text.lower():
-                    short_msg = "КОД ОШИБКИ НЕ НАЙДЕН ЧАТ/КАНАЛ"
+                    short_msg = "КОД ОШИБКИ: НЕ НАЙДЕН ЧАТ/КАНАЛ"
                 elif "banned" in error_text.lower():
-                    short_msg = "КОД ОШИБКИ : ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
+                    short_msg = "КОД ОШИБКИ: ВЫ ЗАБАНЕНЫ В КАНАЛЕ"
                 else:
                     short_msg = f"КОД ОШИБКИ: {error_text}"
-                logger.error(f"Ошибка подписки на {link}: {e}", exc_info=True)
-                await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
+                
+                logger.error(f"Ошибка подписки/мута на {link}: {e}", exc_info=True)
+                await self.send_error_to_channel(f"Ошибка подписки/мута на {link}: {short_msg}")
                 failed += 1
     
-        res = f"⛩Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
+        res = f"Видеокамера подписка+мут завершены: успешно {success}, не удалось {failed}.\nВыполнено для: {', '.join(urls)}"
         await self.send_success_to_channel(res)
     
     @loader.command()
