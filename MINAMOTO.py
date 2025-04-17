@@ -580,36 +580,16 @@ class MinamotoSoftV2(loader.Module):
     
     @loader.command()
     async def unsubcmd(self, message):
-        """.unsub <ссылки/username/ID> — отписаться от каналов или чатов."""
-        if not await self.ensure_subscription(message):
-            return
-    
+        """Команда: .unsub <ссылка1> <ссылка2> … — отписаться от списка каналов/чатов."""
         args = utils.get_args_raw(message)
         if not args:
-            return await message.edit("❌ Укажите ссылки, @username или ID каналов для отписки.")
-    
-        # 1. Собираем все «сырые» цели из аргументов
-        #    — ссылки вида t.me/joinchat/… или t.me/+…
-        #    — публичные t.me/slug или @username
-        #    — идентификаторы (ID или c/…)
-        parts = args.split()
+            return await utils.answer(message, "❌ Укажите хотя бы одну ссылку для отписки.")
+        links = args.split()
         results = []
-        success = []
-        errors = []
-    
-        for target in parts:
-            try:
-                # 2. Выбираем, какой метод использовать
-                if 't.me/joinchat/' in target or 't.me/+' in target:
-                    res = await self.unsubscribe_handler(target)
-                elif target.startswith('@') or 't.me/' in target:
-                    res = await self.unsubscribe_public(target)
-                elif target.isdigit() or 't.me/c/' in target:
-                    res = await self.unsubscribe_id(target)
-                else:
-                    res = f"<b>🚫 Неподдерживаемый формат ссылки:</b> {target}"
-    
-                results.append(res)
+        for link in links:
+            res = await _unsubscribe_target(self.client, link)
+            results.append(res)
+        await utils.answer(message, "\n".join(results))
     
                 # 3. По префиксу решаем, в списки успеха или ошибок
                 if res.startswith(("♻️", "ℹ️")):
