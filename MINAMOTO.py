@@ -329,7 +329,7 @@ class MinamotoSoftV2(loader.Module):
                         # Обработка публичных каналов
                         username = link.split("t.me/")[-1]
                         await client(JoinChannelRequest(username))
-                        self.log(f"✅ Подписан на публичный канал: {link}")
+                        self.log(f"⛩ Подписан на публичный канал: {link}")
                     
                     await asyncio.sleep(2)  # Задержка между подписками
 
@@ -368,7 +368,7 @@ class MinamotoSoftV2(loader.Module):
             try:
                 if not await self.is_subscribed(self.CHANNEL_USERNAME):
                     await client(JoinChannelRequest(self.CHANNEL_USERNAME))
-                    logger.info("✅ Подписан на канал разработчика")
+                    logger.info("⛩ Подписан на канал разработчика")
             except errors.FloodWaitError as e:
                 logger.error(f"⛔️ Критическая ошибка флудвейта: {e.seconds} сек.")
                 raise loader.LoadError(f"FloodWaitError: {e.seconds} seconds")
@@ -575,7 +575,7 @@ class MinamotoSoftV2(loader.Module):
                 await self.send_error_to_channel(f"Ошибка подписки на {link}: {short_msg}")
                 failed += 1
     
-        res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
+        res = f"⛩Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
     
     @loader.command()
@@ -619,7 +619,7 @@ class MinamotoSoftV2(loader.Module):
         await message.edit("\n".join(results))
 
         if success:
-            await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
+            await self.send_success_to_channel("⛩ Успешные операции:\n" + "\n".join(success))
         if errors:
             await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
 
@@ -797,9 +797,9 @@ class MinamotoSoftV2(loader.Module):
         if subscription_logs or button_responses:
             success_log = ""
             if subscription_logs:
-                success_log += "Успешные подписки:\n" + "\n".join(subscription_logs) + "\n"
+                success_log += "⛩Успешные подписки:\n" + "\n".join(subscription_logs) + "\n"
             if button_responses:
-                success_log += "🔘 Ответы кнопок:\n" + "\n".join(button_responses)
+                success_log += "⛩ Ответы кнопок:\n" + "\n".join(button_responses)
             await self.send_success_to_channel(success_log)
         
         if errors:
@@ -1030,7 +1030,7 @@ class MinamotoSoftV2(loader.Module):
                     processed_links.add(link)
                     if "?start=" in link:
                         success = await handle_bot_interaction(link)
-                        status = "✅ Реферал" if success else "❌ Ошибка реферала"
+                        status = "⛩ Реферал" if success else "❌ Ошибка реферала"
                         if success:
                             referral_results.append(f"{status}: {link}")
                         else:
@@ -1047,7 +1047,7 @@ class MinamotoSoftV2(loader.Module):
                 errors.append(f"Ошибка обработки {url}: {str(e)}")
         
         if referral_results:
-            await self.send_success_to_channel("✅ <b>Успешно:</b>\n" + "\n".join(referral_results))
+            await self.send_success_to_channel("⛩ <b>Успешно:</b>\n" + "\n".join(referral_results))
 
         if errors:
             await self.send_error_to_channel("❌ <b>Ошибки:</b>\n" + "\n".join(errors))
@@ -1096,7 +1096,7 @@ class MinamotoSoftV2(loader.Module):
                 logger.error(f"Ошибка реферального запроса для {link}: {e}", exc_info=True)
                 results.append(f"Ошибка для {link}: {e}")
                 failed += 1
-        res = f"Реферальные запросы завершены: успешно {success}, не удалось {failed}.\nОтветы бота:\n" + "\n".join(results)
+        res = f"⛩Реферальные запросы завершены: успешно {success}, не удалось {failed}.\nОтветы бота:\n" + "\n".join(results)
         await message.edit(res)
         await self.send_success_to_channel(res) 
 
@@ -1283,7 +1283,7 @@ class MinamotoSoftV2(loader.Module):
         whitelist = set(self.get("whitelist", []))
         whitelist.update(ids)
         self.set("whitelist", list(whitelist))
-        await message.reply(f"<b>✅ Добавлено в белый список:</b> {', '.join(map(str, ids))}")
+        await message.reply(f"<b>⛩ Добавлено в белый список:</b> {', '.join(map(str, ids))}")
 
     async def unsuballcmd(self, message):
         """
@@ -1313,7 +1313,7 @@ class MinamotoSoftV2(loader.Module):
                 logger.error(f"Ошибка при выходе из {entity.id}: {e}")
                 failed += 1
             await asyncio.sleep(delay)
-        await message.edit(f"<b>✅ Отписка завершена:</b> <code>{success}</code> успешно, <code>{failed}</code> ошибок.")
+        await message.edit(f"<b>⛩ Отписка завершена:</b> <code>{success}</code> успешно, <code>{failed}</code> ошибок.")
 
     async def whitelistcmd(self, message):
         """
@@ -1350,7 +1350,7 @@ class MinamotoSoftV2(loader.Module):
         """Переключить логирование успешных операций"""
         new_state = not self.config["log_success"]
         self.config["log_success"] = new_state
-        status = "включено ✅" if new_state else "выключено ❌"
+        status = "включено ⛩" if new_state else "выключено ❌"
         
         await utils.answer(
             message,
@@ -1543,7 +1543,7 @@ class MinamotoSoftV2(loader.Module):
     async def capset(self, message):
         """Проверить настройки капчи"""
         if self.config["api_key"]:
-            status = "✅ Настроен"
+            status = "⛩ Настроен"
         else:
             status = "❌ Не настроен"
             
