@@ -579,20 +579,20 @@ class MinamotoSoftV2(loader.Module):
         await self.send_success_to_channel(res)
 
     async def get_entity_from_link(client, link):
-    try:
-        if 't.me/+' in link:
-            invite_hash = link.split('+')[1]
-            try:
-                updates = await client(ImportChatInviteRequest(invite_hash))
-                return updates.chats[0]
-            except UserAlreadyParticipantError:
-                # Уже участвуешь — можно получить как обычно
+        try:
+            if 't.me/+' in link:
+                invite_hash = link.split('+')[1]
+                try:
+                    updates = await client(ImportChatInviteRequest(invite_hash))
+                    return updates.chats[0]
+                except UserAlreadyParticipantError:
+                    # Уже участвуешь — можно получить как обычно
+                    return await client.get_entity(link)
+            else:
                 return await client.get_entity(link)
-        else:
-            return await client.get_entity(link)
-    except Exception as e:
-        print(f"Ошибка при получении entity: {e}")
-        return None
+        except Exception as e:
+            print(f"Ошибка при получении entity: {e}")
+            return None
 
     @loader.command()
     async def unsubcmd(self, message):
