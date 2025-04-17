@@ -577,60 +577,54 @@ class MinamotoSoftV2(loader.Module):
         res = f"Подписка завершена: успешно {success}, не удалось {failed}.\nПодписка выполнена на: {', '.join(urls)}"
         await self.send_success_to_channel(res)
     
-@loader.command()
-async def unsubcmd(self, message):
-    """Команда: .unsub <ссылка1> <ссылка2> … — отписаться от списка каналов/чатов."""
-    args = utils.get_args_raw(message)
-    if not args:
-        return await utils.answer(message, "❌ Укажите хотя бы одну ссылку для отписки.")
-
-    links = args.split()
-    results = []
-    success = []
-    errors = []
-
-    for link in links:
-        res = await self._unsubscribe_target(link)
-        results.append(res)
-        if res.startswith(("ℹ️", "♻️")):
-            success.append(res)
-        else:
-            errors.append(res)
-
-    # Отправка сводного отчёта
-    await utils.answer(message, "\n".join(results))
-    if success:
-        await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
-    if errors:
-        await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
-
-
-        # Публичные каналы/чаты (@username или t.me/username)
-        if re.match(r'^@?[\w\d_]{5,32}$', target) or ('t.me/' in target and 't.me/c/' not in target):
-            username = target.split('t.me/')[-1].strip('/')
-            username = username.lstrip('@')
-            entity = await self.client.get_entity(username)
-            await self.client(LeaveChannelRequest(entity))
-            link = f"https://t.me/{username}"
-            return f"♻️ LEFT: <a href='{link}'>Public</a>"
-
-        # Приватные каналы/чаты по ID (t.me/c/<id> или просто цифры)
-        if 't.me/c/' in target or target.isdigit():
-            cid = target.split('t.me/c/')[-1].split('/')[0] if 't.me/c/' in target else target
-            channel_id = int(cid)
-            peer = PeerChannel(channel_id)
-            entity = await self.client.get_entity(peer)
-            await self.client(LeaveChannelRequest(entity))
-            link = f"https://t.me/c/{channel_id}"
-            return f"♻️ LEFT: <a href='{link}'>Private</a>"
-
-        # Неподдерживаемый формат
-        return "<b>🚫 Неподдерживаемый формат ссылки.</b>"
-
-    except Exception as e:
-        # Универсальная ошибка
-        return f"🚫 Ошибка при обработке {target}: {type(e).__name__}"
-
+    @loader.command()
+    async def unsubcmd(self, message):
+        """Команда: .unsub <ссылка1> <ссылка2> … — отписаться от списка каналов/чатов."""
+        args = utils.get_args_raw(message)
+        if not args:
+            return await utils.answer(message, "❌ Укажите хотя бы одну ссылку для отписки.")
+        
+        links = args.split()
+        results = []
+        success = []
+        errors = []
+    
+        for link in links:
+            try:
+                # пытаемся отписаться
+                res = await _unsubscribe_target(self.client, link)
+            except Exception as e:
+                # используем link вместо несуществующего target
+                res = f"🚫 Ошибка при обработке {link}: {e.__class__.__name__}"
+            results.append(res)
+    
+            # разделяем успешные и ошибочные по префиксу
+            if res.startswith(("ℹ️", "♻️")):
+                success.append(res)
+            else:
+                errors.append(res)
+    
+        # 4. Отправляем единый отчёт в чат
+        await utils.answer(message, "\n".join(results))
+    
+        # 5. Логи
+        if success:
+            await self.send_success_to_channel("✅ Успешные операции:\n" + "\n".join(success))
+        if errors:
+            await self.send_error_to_channel("❌ Ошибки при отписке:\n" + "\n".join(errors))
+    
+    
+    async def _unsubscribe_target(client, target_link: str) -> str:
+        """
+        Помогает отписаться от канала/чата по публичной ссылке или инвайт‑ссылке.
+        Возвращает строку с результатом операции.
+        """
+        try:
+            entity = await client.get_entity(target_link)
+            await client(LeaveChannelRequest(entity))
+            return f"ℹ️ Успешно отписан от {target_link}"
+        except Exception as e:
+            return f"❌ Не удалось отписаться от {target_link}: {e.__class__.__name__}"
 
     @loader.command()
     async def run(self, message):
