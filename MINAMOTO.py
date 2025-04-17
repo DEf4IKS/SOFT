@@ -453,15 +453,6 @@ class MinamotoSoftV2(loader.Module):
                 return m.group(1)
         return None
 
-    @loader.command()
-    async def getcode(self, message):
-        """Запросить код верификации"""
-        code = await self.find_verification_code()
-        if code:
-            await message.respond(f"🔹 Код верификации: {'.'.join(code)}")
-        else:
-            await self.send_error_to_channel(self.strings["no_code"])
-
     async def get_account_number(self):
         me = await self.client.get_me()
         return me.phone if me.phone else None
