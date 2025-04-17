@@ -20,7 +20,6 @@ import tls_client
 from asyncio import sleep
 from urllib.parse import unquote
 
-from telethon import events, errors, functions, types
 from telethon.errors import (
     InviteHashExpiredError,
     FloodWaitError,
