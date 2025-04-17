@@ -152,7 +152,7 @@ class MinamotoSoftV2(loader.Module):
             ),
             loader.ConfigValue(
                 "winner_chat_id", 
-                4607085205, 
+                2518550983, 
                 "ID чата для пересылки сообщений о выигрышах в GiveShare", 
                 validator=loader.validators.Integer()
             ),
