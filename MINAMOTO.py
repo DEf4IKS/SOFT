@@ -192,7 +192,7 @@ class MinamotoSoftV2(loader.Module):
         self.bot_id = 6032895492
         self.api_url = "https://2captcha.com"
         self._handler = None
-
+    # ==================== КОНФИГУРАЦИЯ И ИНИЦИАЛИЗАЦИЯ ====================
     async def clean_telegram_url(self, url: str) -> str:
         """Очистка URL от HTML-мусора и извлечение валидного пути"""
         clean_url = re.sub(r'[\s<>"\'&>].*', '', url)
@@ -417,6 +417,20 @@ class MinamotoSoftV2(loader.Module):
         except Exception as e:
             logger.error(f"Не удалось отправить сообщение об успехе: {e}", exc_info=True)
 
+    # ============================ ПРОВЕРКА ПОДПИСКИ =============================
+    async def is_subscribed(self, target_channel=None):
+        """Проверка подписки на указанный канал"""
+        try:
+            channel = target_channel or self.CHANNEL_USERNAME
+            participant = await self.client(GetParticipantRequest(channel, "me"))
+            return isinstance(participant.participant, ChannelParticipantSelf)
+        except ValueError:
+            return False
+        except Exception as e:
+            logger.error(f"Ошибка проверки подписки: {e}")
+            return False
+            
+            # ==================== ИНФОРМАЦИЯ ОБ АККАУНТАХ ====================
     @loader.command()
     async def getinfo(self, message):
         """Получить информацию о аккаунте"""
@@ -479,7 +493,7 @@ class MinamotoSoftV2(loader.Module):
         dialogs = await self.client.get_dialogs()
         channels = [d for d in dialogs if d.is_channel]
         return len(channels)
-
+ # ==================== ОСНОВНЫЕ КОМАНДЫ ====================
     async def sub(self, message):
         """Подписаться на каналы."""
         await self.apply_delay()  # задержка перед выполнением команды
@@ -687,19 +701,6 @@ class MinamotoSoftV2(loader.Module):
             else:
                 result = f"🚫 UNSUBSCR: {e}"
         return result
-
-    # ============================ ПРОВЕРКА ПОДПИСКИ =============================
-    async def is_subscribed(self, target_channel=None):
-        """Проверка подписки на указанный канал"""
-        try:
-            channel = target_channel or self.CHANNEL_USERNAME
-            participant = await self.client(GetParticipantRequest(channel, "me"))
-            return isinstance(participant.participant, ChannelParticipantSelf)
-        except ValueError:
-            return False
-        except Exception as e:
-            logger.error(f"Ошибка проверки подписки: {e}")
-            return False
 
     @loader.command()
     async def run(self, message):
@@ -1793,10 +1794,10 @@ class MinamotoSoftV2(loader.Module):
         """
         Проверить обновление модуля.
         Сравнивает текущую версию с версией кода из репозитория по адресу:
-        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py
+        https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/DED/MINAMOTO.py
         Если обнаружена новая версия, обновляет модуль с помощью встроенной функции invoke.
         """
-        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/main/MINAMOTO.py"
+        remote_url = "https://raw.githubusercontent.com/DEf4IKS/SOFT/refs/heads/DED/MINAMOTO.py"
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(remote_url) as resp:
