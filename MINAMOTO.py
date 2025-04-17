@@ -16,6 +16,7 @@ import requests
 import tls_client
 import subprocess
 import cloudscraper
+from telethon.tl.types import ChatInviteAlready
 from urllib.parse import unquote
 from telethon.functions.messages import CheckChatInviteRequest
 from asyncio import sleep
